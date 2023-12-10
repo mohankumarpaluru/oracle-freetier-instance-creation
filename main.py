@@ -1,3 +1,5 @@
+import configparser
+import json
 import logging
 import os
 import time
@@ -12,10 +14,18 @@ load_dotenv('oci.env')
 
 # Access loaded environment variables
 OCI_CONFIG = os.getenv("OCI_CONFIG")
-OCI_USER_ID = os.getenv("OCI_USER_ID")
 OCT_FREE_AD = os.getenv("OCT_FREE_AD")
 DISPLAY_NAME = os.getenv("DISPLAY_NAME")
+WAIT_TIME = os.getenv("WAIT_TIME")
 SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE")
+OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID")
+OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM")
+OS_VERSION = os.getenv("OS_VERSION")
+
+# Read the configuration from oci_config file
+config = configparser.ConfigParser()
+config.read(OCI_CONFIG)
+OCI_USER_ID = config.get('DEFAULT', 'user')
 
 # Set up logging
 logging.basicConfig(
@@ -36,26 +46,50 @@ iam_client = oci.identity.IdentityClient(config)
 network_client = oci.core.VirtualNetworkClient(config)
 compute_client = oci.core.ComputeClient(config)
 
+IMAGE_LIST_KEYS = [
+    "lifecycle_state",
+    "display_name",
+    "id",
+    "operating_system",
+    "operating_system_version",
+    "size_in_mbs",
+    "time_created",
+]
+
+
+def write_into_file(file_path, data):
+    """Write data into a file.
+
+    Args:
+        file_path (str): The path of the file.
+        data (str): The data to be written into the file.
+    """
+    with open(file_path, "w", encoding="utf-8") as file_writer:
+        file_writer.write(data)
+
 
 def create_instance_details_file(compartment_id):
+    """Create a file with details of instances in the specified compartment.
+
+    Args:
+        compartment_id (str): The compartment ID.
+    """
     list_instances_response = compute_client.list_instances(compartment_id=compartment_id)
     for instance in list_instances_response.data:
         if instance.shape == "VM.Standard.A1.Flex":
-            with open('INSTANCE_CREATED', 'w') as file:
-                details = [f"Instance ID: {instance.id}",
-                           f"Display Name: {instance.display_name}",
-                           f"Availability Domain: {instance.availability_domain}",
-                           f"Shape: {instance.shape}",
-                           f"State: {instance.lifecycle_state}",
-                           "\n"]
-                file.write('\n'.join(details))
+            details = [f"Instance ID: {instance.id}",
+                       f"Display Name: {instance.display_name}",
+                       f"Availability Domain: {instance.availability_domain}",
+                       f"Shape: {instance.shape}",
+                       f"State: {instance.lifecycle_state}",
+                       "\n"]
+            write_into_file('INSTANCE_CREATED', '\n'.join(details))
 
 
 def handle_errors(command, data, log):
-    """
-    Handles errors and logs messages.
+    """Handles errors and logs messages.
 
-    Parameters:
+    Args:
         command (str): The OCI command being executed.
         data (dict): The data or error information returned from the OCI service.
         log (logging.Logger): The logger instance for logging messages.
@@ -65,18 +99,16 @@ def handle_errors(command, data, log):
     """
     log.info("Command: %s\nOutput: %s", command, data)
     if "code" in data:
-        error_code = data["code"]
-        if error_code in ("Out Of Capacity", "TooManyRequests"):
-            time.sleep(60)
+        if data["code"] == "TooManyRequests" or data["message"] == "Out of host capacity.":
+            time.sleep(WAIT_TIME)
             return True
     raise Exception("Error: %s" % data)
 
 
 def execute_oci_command(client, method, *args, **kwargs):
-    """
-    Executes an OCI command using the specified OCI client.
+    """Executes an OCI command using the specified OCI client.
 
-    Parameters:
+    Args:
         client: The OCI client instance.
         method (str): The method to call on the OCI client.
         args: Additional positional arguments to pass to the OCI client method.
@@ -98,25 +130,22 @@ def execute_oci_command(client, method, *args, **kwargs):
 
 
 def generate_ssh_key_pair(public_key_file, private_key_file):
-    """
-    Generates an SSH key pair and saves them to the specified files.
+    """Generates an SSH key pair and saves them to the specified files.
 
-    Parameters:
+    Args:
         public_key_file (str): The file to save the public key.
         private_key_file (str): The file to save the private key.
     """
     key = paramiko.RSAKey.generate(2048)
     key.write_private_key_file(private_key_file)
     # Save public key to file
-    with open(public_key_file, "w", encoding="utf-8") as pub_key:
-        pub_key.write(f"ssh-rsa {key.get_base64()} {public_key_file.stem}_auto_generated")
+    write_into_file(public_key_file, f"ssh-rsa {key.get_base64()} {Path(public_key_file).stem}_auto_generated")
 
 
 def read_or_generate_ssh_public_key(public_key_file):
-    """
-    Reads the SSH public key from the file if it exists, else generates and reads it.
+    """Reads the SSH public key from the file if it exists, else generates and reads it.
 
-    Parameters:
+    Args:
         public_key_file (str): The file containing the public key.
 
     Returns:
@@ -137,8 +166,7 @@ def read_or_generate_ssh_public_key(public_key_file):
 
 
 def launch_instance():
-    """
-    Launches an OCI Compute instance using the specified parameters.
+    """Launches an OCI Compute instance using the specified parameters.
 
     Raises:
         Exception: Raises an exception if an unexpected error occurs.
@@ -153,7 +181,6 @@ def launch_instance():
                                                "list_availability_domains",
                                                compartment_id=oci_tenancy)
     oci_ad_name = next(item.name for item in availability_domains if item.name.endswith(OCT_FREE_AD))
-
     logging.info("OCI_AD_NAME: %s", oci_ad_name)
 
     # Step 3 - Get Subnet ID
@@ -164,14 +191,20 @@ def launch_instance():
     logging.info("OCI_SUBNET_ID: %s", oci_subnet_id)
 
     # Step 4 - Get Image ID of VM.Standard.A1.Flex
-    images = execute_oci_command(
-        compute_client,
-        "list_images",
-        compartment_id=oci_tenancy,
-        shape="VM.Standard.A1.Flex",
-    )
-    oci_image_id = images[0].id
-    logging.info("OCI_IMAGE_ID: %s", oci_image_id)
+    if not OCI_IMAGE_ID:
+        images = execute_oci_command(
+            compute_client,
+            "list_images",
+            compartment_id=oci_tenancy,
+            shape="VM.Standard.A1.Flex",
+        )
+        shortened_images = [{key: json.loads(str(image))[key] for key in IMAGE_LIST_KEYS} for image in images]
+        write_into_file('images_list.json', json.dumps(shortened_images, indent=2))
+        oci_image_id = next(image.id for image in images if
+                            image.operating_system == OPERATING_SYSTEM and image.operating_system_version == OS_VERSION)
+        logging.info("OCI_IMAGE_ID: %s", oci_image_id)
+    else:
+        oci_image_id = OCI_IMAGE_ID
 
     ssh_public_key = read_or_generate_ssh_public_key(SSH_AUTHORIZED_KEYS_FILE)
 
