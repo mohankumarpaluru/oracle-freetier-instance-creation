@@ -16,8 +16,9 @@ load_dotenv('oci.env')
 OCI_CONFIG = os.getenv("OCI_CONFIG")
 OCT_FREE_AD = os.getenv("OCT_FREE_AD")
 DISPLAY_NAME = os.getenv("DISPLAY_NAME")
-WAIT_TIME = os.getenv("WAIT_TIME")
+WAIT_TIME = os.getenv("REQUEST_WAIT_TIME_SECS")
 SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE")
+BOOT_VOL_SIZE = os.getenv("BOOT_VOLUME_SIZE_IN_GBS")
 OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID")
 OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM")
 OS_VERSION = os.getenv("OS_VERSION")
@@ -224,6 +225,7 @@ def launch_instance():
                     display_name=DISPLAY_NAME,
                     shape="VM.Standard.A1.Flex",
                     image_id=oci_image_id,
+                    boot_volume_size_in_gbs=BOOT_VOL_SIZE,
                     availability_config=oci.core.models.LaunchInstanceAvailabilityConfigDetails(
                         recovery_action="RESTORE_INSTANCE"
                     ),
