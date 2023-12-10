@@ -2,7 +2,9 @@ import configparser
 import json
 import logging
 import os
+import smtplib
 import time
+from email.mime.text import MIMEText
 from pathlib import Path
 
 import oci
@@ -16,12 +18,14 @@ load_dotenv('oci.env')
 OCI_CONFIG = os.getenv("OCI_CONFIG")
 OCT_FREE_AD = os.getenv("OCT_FREE_AD")
 DISPLAY_NAME = os.getenv("DISPLAY_NAME")
-WAIT_TIME = os.getenv("REQUEST_WAIT_TIME_SECS")
+WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS"))
 SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE")
-BOOT_VOL_SIZE = os.getenv("BOOT_VOLUME_SIZE_IN_GBS")
 OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID")
 OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM")
 OS_VERSION = os.getenv("OS_VERSION")
+NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL")
+EMAIL = os.getenv("EMAIL")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 
 # Read the configuration from oci_config file
 config = configparser.ConfigParser()
@@ -69,8 +73,41 @@ def write_into_file(file_path, data):
         file_writer.write(data)
 
 
+def send_email(subject, body, email, password):
+    """Send an email using the SMTP protocol.
+
+    Args:
+        subject (str): The subject of the email.
+        body (str): The body/content of the email.
+        email (str): The sender's email address.
+        password (str): The sender's email password or app-specific password.
+
+    Raises:
+        smtplib.SMTPException: If an error occurs during the SMTP communication.
+    """
+    # Set up the MIME
+    message = MIMEText(body)
+    message["Subject"] = subject
+    message["From"] = email
+    message["To"] = email
+
+    # Connect to the SMTP server
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        try:
+            # Start TLS for security
+            server.starttls()
+            # Login to the server
+            server.login(email, password)
+            # Send the email
+            server.sendmail(email, email, message.as_string())
+        except smtplib.SMTPException as mail_err:
+            # Handle SMTP exceptions (e.g., authentication failure, connection issues)
+            logging.error(f"Error while sending email: {mail_err}")
+            raise
+
+
 def create_instance_details_file(compartment_id):
-    """Create a file with details of instances in the specified compartment.
+    """Create a file with details of instances in the specified compartment and notify user.
 
     Args:
         compartment_id (str): The compartment ID.
@@ -84,7 +121,10 @@ def create_instance_details_file(compartment_id):
                        f"Shape: {instance.shape}",
                        f"State: {instance.lifecycle_state}",
                        "\n"]
-            write_into_file('INSTANCE_CREATED', '\n'.join(details))
+            body = '\n'.join(details)
+            write_into_file('INSTANCE_CREATED', body)
+            if NOTIFY_EMAIL:
+                send_email('OCI INSTANCE CREATED', body, EMAIL, EMAIL_PASSWORD)
 
 
 def handle_errors(command, data, log):
@@ -225,7 +265,6 @@ def launch_instance():
                     display_name=DISPLAY_NAME,
                     shape="VM.Standard.A1.Flex",
                     image_id=oci_image_id,
-                    boot_volume_size_in_gbs=BOOT_VOL_SIZE,
                     availability_config=oci.core.models.LaunchInstanceAvailabilityConfigDetails(
                         recovery_action="RESTORE_INSTANCE"
                     ),
@@ -247,7 +286,7 @@ def launch_instance():
 
         except oci.exceptions.ServiceError as srv_err:
             if srv_err.code == "LimitExceeded":
-                logging_step5.info("LimitExceeded , exiting the program")
+                logging_step5.info("%s , exiting the program", srv_err.code)
                 create_instance_details_file(oci_tenancy)
                 exit()
             data = {
