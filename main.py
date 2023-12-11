@@ -20,10 +20,10 @@ OCT_FREE_AD = os.getenv("OCT_FREE_AD")
 DISPLAY_NAME = os.getenv("DISPLAY_NAME")
 WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS"))
 SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE")
-OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID")
+OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID", None)
 OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM")
 OS_VERSION = os.getenv("OS_VERSION")
-NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL")
+NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL", 'False').lower() == 'true'
 EMAIL = os.getenv("EMAIL")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 
@@ -34,13 +34,13 @@ OCI_USER_ID = config.get('DEFAULT', 'user')
 
 # Set up logging
 logging.basicConfig(
-    filename="step1to4.log",
+    filename="setup_and_info.log",
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
-logging_step5 = logging.getLogger("step5")
+logging_step5 = logging.getLogger("launch_instance")
 logging_step5.setLevel(logging.INFO)
-fh = logging.FileHandler("step5.log")
+fh = logging.FileHandler("launch_instance.log")
 fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 logging_step5.addHandler(fh)
 
@@ -106,32 +106,71 @@ def send_email(subject, body, email, password):
             raise
 
 
-def create_instance_details_file(compartment_id):
-    """Create a file with details of instances in the specified compartment and notify user.
+def list_all_instances(compartment_id):
+    """Checks for ARM instances that are in the compartment.
 
     Args:
         compartment_id (str): The compartment ID.
+
+    Returns:
+        List: The instances list data returned from the OCI service.
     """
     list_instances_response = compute_client.list_instances(compartment_id=compartment_id)
-    for instance in list_instances_response.data:
-        if instance.shape == "VM.Standard.A1.Flex":
-            details = [f"Instance ID: {instance.id}",
-                       f"Display Name: {instance.display_name}",
-                       f"Availability Domain: {instance.availability_domain}",
-                       f"Shape: {instance.shape}",
-                       f"State: {instance.lifecycle_state}",
-                       "\n"]
-            body = '\n'.join(details)
-            write_into_file('INSTANCE_CREATED', body)
-            if NOTIFY_EMAIL:
-                send_email('OCI INSTANCE CREATED', body, EMAIL, EMAIL_PASSWORD)
+    return list_instances_response.data
+
+
+def create_instance_details_file_and_notify(instance):
+    """Create a file with details of instances and notify the user.
+
+    Args:
+        instance (dict): The instance dict returned from the OCI service.
+    """
+    details = [f"Instance ID: {instance.id}",
+               f"Display Name: {instance.display_name}",
+               f"Availability Domain: {instance.availability_domain}",
+               f"Shape: {instance.shape}",
+               f"State: {instance.lifecycle_state}",
+               "\n"]
+    body = '\n'.join(details)
+    write_into_file('INSTANCE_CREATED', body)
+    if NOTIFY_EMAIL:
+        send_email('OCI INSTANCE CREATED', body, EMAIL, EMAIL_PASSWORD)
+
+
+def check_instance_state_and_write(compartment_id, shape="VM.Standard.A1.Flex", states=('RUNNING', 'PROVISIONING'),
+                                   tries=3):
+    """Check the state of instances in the specified compartment and take action when a matching instance is found.
+
+    Args:
+        compartment_id (str): The compartment ID to check for instances.
+        shape (str, optional): The shape of the instance. Defaults to "VM.Standard.A1.Flex".
+        states (tuple, optional): The lifecycle states to consider. Defaults to ('RUNNING', 'PROVISIONING').
+        tries(int, optional): No of reties until an instance is found. Defaults to 3.
+
+    Returns:
+        bool: True if a matching instance is found, False otherwise.
+    """
+    for _ in range(tries):
+        instance_list = list_all_instances(compartment_id=compartment_id)
+        running_arm_instance = next(
+            (instance for instance in instance_list if instance.shape == shape and instance.lifecycle_state in states),
+            None)
+
+        if running_arm_instance:
+            create_instance_details_file_and_notify(running_arm_instance)
+            return True
+
+        if tries - 1 > 0:
+            time.sleep(60)
+
+    return False
 
 
 def handle_errors(command, data, log):
     """Handles errors and logs messages.
 
     Args:
-        command (str): The OCI command being executed.
+        command (arg): The OCI command being executed.
         data (dict): The data or error information returned from the OCI service.
         log (logging.Logger): The logger instance for logging messages.
 
@@ -249,8 +288,9 @@ def launch_instance():
 
     ssh_public_key = read_or_generate_ssh_public_key(SSH_AUTHORIZED_KEYS_FILE)
 
-    # Step 5 - Launch Instance
-    while True:
+    # Step 5 - Launch Instance if it's not already exist and running
+    instance_exist_flag = check_instance_state_and_write(oci_tenancy, tries=1)
+    while not instance_exist_flag:
         try:
             launch_instance_response = compute_client.launch_instance(
                 launch_instance_details=oci.core.models.LaunchInstanceDetails(
@@ -282,12 +322,12 @@ def launch_instance():
                 logging_step5.info(
                     "Command: launch_instance\nOutput: %s", launch_instance_response
                 )
-                break
+                instance_exist_flag = check_instance_state_and_write(oci_tenancy)
 
         except oci.exceptions.ServiceError as srv_err:
             if srv_err.code == "LimitExceeded":
                 logging_step5.info("%s , exiting the program", srv_err.code)
-                create_instance_details_file(oci_tenancy)
+                check_instance_state_and_write(oci_tenancy)
                 exit()
             data = {
                 "status": srv_err.status,

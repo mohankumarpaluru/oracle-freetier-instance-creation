@@ -1,0 +1,6 @@
+[DEFAULT]
+user=ocid1.user.oc1..aaaaaaaa
+fingerprint=2e:c0:...
+tenancy=ocid1.tenancy.oc1..aaaaaaaapoaaa
+region=ap-hyderabad-1
+key_file=/home/ubuntu/oracle-freetier-instance-creation/oci_api_private_key.pem
