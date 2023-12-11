@@ -35,7 +35,7 @@ The script attempts to create an instance every 60 seconds or as per the `REQUES
 
 4. In your `oci_config`, fill the **`key_file`** with the absolute path of your `oci_api_private_key.pem`. For example, `\home\ubuntu\oracle-freetier-instance-creation\oci_api_private_key.pem`.
 
-5. Edit the **`oci.env`** file and fill in the necessary details. Refer to the documentation for more information on `oci.env` fields.
+5. Edit the **`oci.env`** file and fill in the necessary details. Refer to the [documentation](https://github.com/mohankumarpaluru/oracle-freetier-instance-creation#environment-variables) for more information on `oci.env` fields.
 
 ## Run
 
