@@ -16,9 +16,9 @@ The script attempts to create an instance every 60 seconds or as per the `REQUES
 
 ## Pre-Requisites
 - **VM.Standard.E2.1.Micro Instance**: The script is designed for a Ubuntu environment, and you need an existing subnet ID for ARM instance creation. Create an always-free `VM.Standard.E2.1.Micro` instance with Ubuntu 22.04. This instance can be deleted after the ARM instance creation.
-- **OCI API Key (Private Key) & Config Details**: Follow the provided link to create the necessary API key and config details.
+- **OCI API Key (Private Key) & Config Details**: Follow this <TODO> to create the necessary API key and config details.
 - **OCI Free Availability Domain**: Identify the eligible always-free tier availability domain during instance creation.
-- **Gmail App Passkey (Optional)**: If you want to receive an email notification after instance creation and have two-factor authentication enabled, follow the provided link to create a custom app and obtain the passkey.
+- **Gmail App Passkey (Optional)**: If you want to receive an email notification after instance creation and have two-factor authentication enabled, follow this <TODO> to create a custom app and obtain the passkey.
 
 ## Setup
 
@@ -35,7 +35,7 @@ The script attempts to create an instance every 60 seconds or as per the `REQUES
 
 4. In your `oci_config`, fill the **`key_file`** with the absolute path of your `oci_api_private_key.pem`. For example, `\home\ubuntu\oracle-freetier-instance-creation\oci_api_private_key.pem`.
 
-5. Edit the **`oci.env`** file and fill in the necessary details. Refer to the [documentation](https://github.com/mohankumarpaluru/oracle-freetier-instance-creation#environment-variables) for more information on `oci.env` fields.
+5. Edit the **`oci.env`** file and fill in the necessary details. Refer [below for more information](https://github.com/mohankumarpaluru/oracle-freetier-instance-creation#environment-variables) `oci.env` fields.
 
 ## Run
 
