@@ -4,6 +4,7 @@ import logging
 import os
 import smtplib
 import time
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 
@@ -74,11 +75,11 @@ def write_into_file(file_path, data):
 
 
 def send_email(subject, body, email, password):
-    """Send an email using the SMTP protocol.
+    """Send an HTML email using the SMTP protocol.
 
     Args:
         subject (str): The subject of the email.
-        body (str): The body/content of the email.
+        body (str): The HTML body/content of the email.
         email (str): The sender's email address.
         password (str): The sender's email password or app-specific password.
 
@@ -86,10 +87,14 @@ def send_email(subject, body, email, password):
         smtplib.SMTPException: If an error occurs during the SMTP communication.
     """
     # Set up the MIME
-    message = MIMEText(body)
+    message = MIMEMultipart()
     message["Subject"] = subject
     message["From"] = email
     message["To"] = email
+
+    # Attach HTML content to the email
+    html_body = MIMEText(body, "html")
+    message.attach(html_body)
 
     # Connect to the SMTP server
     with smtplib.SMTP("smtp.gmail.com", 587) as server:
@@ -102,28 +107,49 @@ def send_email(subject, body, email, password):
             server.sendmail(email, email, message.as_string())
         except smtplib.SMTPException as mail_err:
             # Handle SMTP exceptions (e.g., authentication failure, connection issues)
-            logging.error(f"Error while sending email: {mail_err}")
+            logging.error("Error while sending email: %s", mail_err)
             raise
 
 
 def list_all_instances(compartment_id):
-    """Checks for ARM instances that are in the compartment.
+    """Retrieve a list of all instances in the specified compartment.
 
     Args:
         compartment_id (str): The compartment ID.
 
     Returns:
-        List: The instances list data returned from the OCI service.
+        list: The list of instances returned from the OCI service.
     """
     list_instances_response = compute_client.list_instances(compartment_id=compartment_id)
     return list_instances_response.data
+
+
+def generate_html_body(instance):
+    """Generate HTML body for the email with instance details.
+
+    Args:
+        instance (dict): The instance dictionary returned from the OCI service.
+
+    Returns:
+        str: HTML body for the email.
+    """
+    # Replace placeholders with instance details
+    with open('email_content.html', 'r', encoding='utf-8') as email_temp:
+        html_template = email_temp.read()
+    html_body = html_template.replace('&lt;INSTANCE_ID&gt;', instance.id)
+    html_body = html_body.replace('&lt;DISPLAY_NAME&gt;', instance.display_name)
+    html_body = html_body.replace('&lt;AD&gt;', instance.availability_domain)
+    html_body = html_body.replace('&lt;SHAPE&gt;', instance.shape)
+    html_body = html_body.replace('&lt;STATE&gt;', instance.lifecycle_state)
+
+    return html_body
 
 
 def create_instance_details_file_and_notify(instance):
     """Create a file with details of instances and notify the user.
 
     Args:
-        instance (dict): The instance dict returned from the OCI service.
+        instance (dict): The instance dictionary returned from the OCI service.
     """
     details = [f"Instance ID: {instance.id}",
                f"Display Name: {instance.display_name}",
@@ -133,8 +159,12 @@ def create_instance_details_file_and_notify(instance):
                "\n"]
     body = '\n'.join(details)
     write_into_file('INSTANCE_CREATED', body)
+
+    # Generate HTML body for email
+    html_body = generate_html_body(instance)
+
     if NOTIFY_EMAIL:
-        send_email('OCI INSTANCE CREATED', body, EMAIL, EMAIL_PASSWORD)
+        send_email('OCI INSTANCE CREATED', html_body, EMAIL, EMAIL_PASSWORD)
 
 
 def check_instance_state_and_write(compartment_id, shape="VM.Standard.A1.Flex", states=('RUNNING', 'PROVISIONING'),
@@ -206,7 +236,7 @@ def execute_oci_command(client, method, *args, **kwargs):
             data = response.data if hasattr(response, "data") else response
             return data
         except oci.exceptions.ServiceError as err:
-            handle_errors(args, err.service_error, logging)
+            handle_errors(args, err, logging)
 
 
 def generate_ssh_key_pair(public_key_file, private_key_file):
