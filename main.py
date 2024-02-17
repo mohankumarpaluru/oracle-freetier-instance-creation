@@ -1,4 +1,5 @@
 import configparser
+import itertools
 import json
 import logging
 import os
@@ -290,7 +291,8 @@ def launch_instance():
     availability_domains = execute_oci_command(iam_client,
                                                "list_availability_domains",
                                                compartment_id=oci_tenancy)
-    oci_ad_name = next(item.name for item in availability_domains if item.name.endswith(OCT_FREE_AD))
+    oci_ad_name = [item.name for item in availability_domains if any(item.name.endswith(oct) for oct in OCT_FREE_AD.split(","))]
+    oci_ad_names = itertools.cycle(oci_ad_name)
     logging.info("OCI_AD_NAME: %s", oci_ad_name)
 
     # Step 3 - Get Subnet ID
@@ -324,7 +326,7 @@ def launch_instance():
         try:
             launch_instance_response = compute_client.launch_instance(
                 launch_instance_details=oci.core.models.LaunchInstanceDetails(
-                    availability_domain=oci_ad_name,
+                    availability_domain=next(oci_ad_names),
                     compartment_id=oci_tenancy,
                     create_vnic_details=oci.core.models.CreateVnicDetails(
                         assign_public_ip=False,

@@ -62,7 +62,7 @@ View the logs of the instance creation API call in `launch_instance.log` and det
 **Required Fields:**
 	
 - `OCI_CONFIG`:  Absolute path to the file with OCI API Config Detail content 
-- `OCT_FREE_AD`: Availability Domain that's eligible for *Always-Free Tier*
+- `OCT_FREE_AD`: Availability Domain that's eligible for *Always-Free Tier*. If multiple, separate by commas
 
 **Optional Fields:**
 - `DISPLAY_NAME`: Name of the Instance 
