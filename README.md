@@ -51,12 +51,26 @@ Once the setup is complete, run the `setup_init.sh` script from the project dire
 ```
 If you are running in a fresh `VM.Standard.E2.1.Micro` instance, you might receive a prompt *Daemons using outdated libraries*. Just click `OK`; that's due to updating the libraries through apt update and won't be asked again. 
 
+The script will display an error prompt if an issue arises; otherwise, it will show "Script is running successfully."
+
 View the logs of the instance creation API call in `launch_instance.log` and details about the parameters used (availability-domain, compartment-id, subnet-id, image-id) in `setup_and_info.log`.
 
+## Errors and Re-Run 
+
+If the `oci_config` file is found to be incorrect, the script generates an `ERROR_IN_CONFIG.log` file. Verify the `oci_config` for accuracy, ensuring it aligns with the [sample_oci_config](https://github.com/mohankumarpaluru/oracle-freetier-instance-creation/blob/85b3ec065a91bb66206933a12a6bd58941446118/sample_oci_config#L1C1-L6C80) without any additional lines or characters.
+
+
+In case of an unhandled exception leading to script termination, an email containing the logs is sent if opted. Otherwise, only the error logs are printed to `UNHANDLED_ERROR.log`. Review the logs and execute the script again using the following command (which skips dependency installation). If the issue persists, raise an issue with the contents of `UNHANDLED_ERROR.log`.
+
+```bash
+./setup_init.sh rereun
+
+```
+
 ## TODO
-- Make Block Volume Size configurable and handle errors
-- Assign a public IP through the script 
-- Create a list of images and OS to display before launching an instance to select
+- [ ] Make Block Volume Size configurable and handle errors
+- [ ] Assign a public IP through the script 
+- [ ] Create a list of images and OS to display before launching an instance to select
 
 ## Environment Variables
 **Required Fields:**
