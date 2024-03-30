@@ -178,7 +178,7 @@ def notify_on_failure(failure_msg):
 
     mail_body = (
         "The script encountered an unhandled error and exited unexpectedly.\n\n"
-        "Please re-run the script by executing './setup_init.sh'.\n\n"
+        "Please re-run the script by executing './setup_init.sh rerun'.\n\n"
         "And raise a issue on GitHub if its not already existing:\n"
         "https://github.com/mohankumarpaluru/oracle-freetier-instance-creation/issues\n\n"
         " And include the following error message to help us investigate and resolve the problem:\n\n"
