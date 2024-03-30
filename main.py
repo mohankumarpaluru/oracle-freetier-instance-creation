@@ -205,14 +205,24 @@ def handle_errors(command, data, log):
         data (dict): The data or error information returned from the OCI service.
         log (logging.Logger): The logger instance for logging messages.
 
-    Raises:
-        Exception: Raises an exception if an unexpected error occurs.
+    Returns:
+        bool: True if the error is temporary and the operation should be retried after a delay.
+        Raises Exception for unexpected errors.
     """
     log.info("Command: %s\nOutput: %s", command, data)
+
+    # Check for temporary errors that can be retried
     if "code" in data:
-        if data["code"] == "TooManyRequests" or data["message"] == "Out of host capacity.":
+        if (data["code"] in ("TooManyRequests", "Out of host capacity.", 'InternalError')
+            ) or (data["message"] == "Out of host capacity."):
             time.sleep(WAIT_TIME)
             return True
+
+    if "status" in data and data["status"] == 502:
+        time.sleep(WAIT_TIME)
+        return True
+
+    # Raise an exception for unexpected errors
     raise Exception("Error: %s" % data)
 
 
