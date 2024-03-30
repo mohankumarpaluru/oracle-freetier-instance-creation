@@ -168,6 +168,26 @@ def create_instance_details_file_and_notify(instance):
         send_email('OCI INSTANCE CREATED', html_body, EMAIL, EMAIL_PASSWORD)
 
 
+def notify_on_failure(failure_msg):
+    """Notifies users when the Instance Creation Failed due to an error thats
+    not handled.
+
+    Args:
+        instance (dict): The instance dictionary returned from the OCI service.
+    """
+
+    mail_body = (
+        "The script encountered an unhandled error and exited unexpectedly.\n\n"
+        "Please re-run the script by executing './setup_init.sh'.\n\n"
+        "And raise a issue on GitHub if its not already existing:\n"
+        "https://github.com/mohankumarpaluru/oracle-freetier-instance-creation/issues\n\n"
+        " And include the following error message to help us investigate and resolve the problem:\n\n"
+        f"{failure_msg}"
+    )
+    if NOTIFY_EMAIL:
+        send_email('OCI INSTANCE CREATION SCRIPT: FAILED DUE TO AN ERROR', mail_body, EMAIL, EMAIL_PASSWORD)
+
+
 def check_instance_state_and_write(compartment_id, shape="VM.Standard.A1.Flex", states=('RUNNING', 'PROVISIONING'),
                                    tries=3):
     """Check the state of instances in the specified compartment and take action when a matching instance is found.
@@ -214,14 +234,15 @@ def handle_errors(command, data, log):
     # Check for temporary errors that can be retried
     if "code" in data:
         if (data["code"] in ("TooManyRequests", "Out of host capacity.", 'InternalError')
-            ) or (data["message"] == "Out of host capacity."):
+        ) or (data["message"] == "Out of host capacity."):
             time.sleep(WAIT_TIME)
             return True
 
     if "status" in data and data["status"] == 502:
         time.sleep(WAIT_TIME)
         return True
-
+    failure_msg = '\n'.join([f'{key}: {value}' for key, value in data.items()])
+    notify_on_failure(failure_msg)
     # Raise an exception for unexpected errors
     raise Exception("Error: %s" % data)
 
@@ -301,7 +322,8 @@ def launch_instance():
     availability_domains = execute_oci_command(iam_client,
                                                "list_availability_domains",
                                                compartment_id=oci_tenancy)
-    oci_ad_name = [item.name for item in availability_domains if any(item.name.endswith(oct) for oct in OCT_FREE_AD.split(","))]
+    oci_ad_name = [item.name for item in availability_domains if
+                   any(item.name.endswith(oct) for oct in OCT_FREE_AD.split(","))]
     oci_ad_names = itertools.cycle(oci_ad_name)
     logging.info("OCI_AD_NAME: %s", oci_ad_name)
 
