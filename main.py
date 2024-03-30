@@ -190,6 +190,7 @@ def notify_on_failure(failure_msg):
         " And include the following error message to help us investigate and resolve the problem:\n\n"
         f"{failure_msg}"
     )
+    write_into_file('UNHANDLED_ERROR.log', mail_body)
     if NOTIFY_EMAIL:
         send_email('OCI INSTANCE CREATION SCRIPT: FAILED DUE TO AN ERROR', mail_body, EMAIL, EMAIL_PASSWORD)
 
@@ -287,7 +288,8 @@ def generate_ssh_key_pair(public_key_file, private_key_file):
     key = paramiko.RSAKey.generate(2048)
     key.write_private_key_file(private_key_file)
     # Save public key to file
-    write_into_file(public_key_file, f"ssh-rsa {key.get_base64()} {Path(public_key_file).stem}_auto_generated")
+    write_into_file(public_key_file, f"ssh-rsa {key.get_base64()
+                                                } {Path(public_key_file).stem}_auto_generated")
 
 
 def read_or_generate_ssh_public_key(public_key_file):
@@ -304,7 +306,7 @@ def read_or_generate_ssh_public_key(public_key_file):
     if not public_key_path.is_file():
         logging.info("SSH key doesn't exist... Generating SSH Key Pair")
         public_key_path.parent.mkdir(parents=True, exist_ok=True)
-        private_key_path = public_key_path.with_name(f"{public_key_path.stem}_private{public_key_path.suffix}")
+        private_key_path = public_key_path.with_name(f"{public_key_path.stem}_private")
         generate_ssh_key_pair(public_key_path, private_key_path)
 
     with open(public_key_path, "r", encoding="utf-8") as pub_key_file:
@@ -348,10 +350,12 @@ def launch_instance():
             compartment_id=oci_tenancy,
             shape="VM.Standard.A1.Flex",
         )
-        shortened_images = [{key: json.loads(str(image))[key] for key in IMAGE_LIST_KEYS} for image in images]
+        shortened_images = [{key: json.loads(str(image))[key] for key in IMAGE_LIST_KEYS
+                             } for image in images]
         write_into_file('images_list.json', json.dumps(shortened_images, indent=2))
         oci_image_id = next(image.id for image in images if
-                            image.operating_system == OPERATING_SYSTEM and image.operating_system_version == OS_VERSION)
+                            image.operating_system == OPERATING_SYSTEM and
+                            image.operating_system_version == OS_VERSION)
         logging.info("OCI_IMAGE_ID: %s", oci_image_id)
     else:
         oci_image_id = OCI_IMAGE_ID
