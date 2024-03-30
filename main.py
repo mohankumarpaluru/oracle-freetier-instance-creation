@@ -31,8 +31,14 @@ EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
 
 # Read the configuration from oci_config file
 config = configparser.ConfigParser()
-config.read(OCI_CONFIG)
-OCI_USER_ID = config.get('DEFAULT', 'user')
+try:
+    config.read(OCI_CONFIG)
+    OCI_USER_ID = config.get('DEFAULT', 'user')
+except configparser.Error as e:
+    with open("ERROR_IN_CONFIG.log", "w", encoding='utf-8') as file:
+        file.write(str(e))
+
+    print(f"Error reading the configuration file: {e}")
 
 # Set up logging
 logging.basicConfig(

@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Check if any log files exist
+if ls *.log >/dev/null 2>&1; then
+    # Delete existing log files
+    rm -f *.log
+    echo "Previous Log files deleted."
+fi
+
 # Making environment non-interactive
 export DEBIAN_FRONTEND=noninteractive
 
@@ -23,6 +30,16 @@ fi
 
 # Run the Python program in the background
 nohup python3 main.py > /dev/null 2>&1 &
+
+# Check for the existence of ERROR_IN_CONFIG.log after running the Python program
+sleep 5  # Wait for a few seconds to allow the program to run and create the log file (if applicable)
+if [ -f "launch_instance.log" ]; then
+    echo "Script is running successfully"
+elif [ -f "ERROR_IN_CONFIG.log" ]; then
+    echo "Error occurred, check ERROR_IN_CONFIG.log and rerun the script"
+else
+    echo "Unhandled Exception Occurred."
+fi
 
 # Deactivate the virtual environment
 deactivate
