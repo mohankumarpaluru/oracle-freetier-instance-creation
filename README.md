@@ -68,8 +68,11 @@ In case of an unhandled exception leading to script termination, an email contai
 ```
 
 ## TODO
-- [ ] Make Block Volume Size configurable and handle errors
-- [ ] Assign a public IP through the script 
+- [ ] Ability to run script locally
+	- [ ] By letting user configure existing oracle subnet id in `OCI_CONFIG`
+	- [ ] By creating VPC and subnet from Script if running locally (need to handle the free tier limits)
+- [ ] Make Boot Volume Size configurable and handle errors and free tier limits
+- [ ] Assign a public IP through the script and handle free tier limits
 - [ ] Create a list of images and OS to display before launching an instance to select
 
 ## Environment Variables
