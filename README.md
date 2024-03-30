@@ -74,6 +74,7 @@ In case of an unhandled exception leading to script termination, an email contai
 - [ ] Make Boot Volume Size configurable and handle errors and free tier limits
 - [ ] Assign a public IP through the script and handle free tier limits
 - [ ] Create a list of images and OS to display before launching an instance to select
+- [ ] Redirect logs to a Telegram Bot
 
 ## Environment Variables
 **Required Fields:**
