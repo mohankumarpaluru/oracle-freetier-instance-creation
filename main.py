@@ -288,8 +288,8 @@ def generate_ssh_key_pair(public_key_file, private_key_file):
     key = paramiko.RSAKey.generate(2048)
     key.write_private_key_file(private_key_file)
     # Save public key to file
-    write_into_file(public_key_file, f"ssh-rsa {key.get_base64()
-                                                } {Path(public_key_file).stem}_auto_generated")
+    write_into_file(public_key_file, (f"ssh-rsa {key.get_base64()} "
+                                      f"{Path(public_key_file).stem}_auto_generated"))
 
 
 def read_or_generate_ssh_public_key(public_key_file):

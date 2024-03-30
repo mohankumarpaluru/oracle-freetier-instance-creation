@@ -15,10 +15,9 @@ if [ "$1" != "rerun" ]; then
     # Update package lists and install required packages without confirmation
     sudo apt update -y
     sudo apt install python3-venv -y
+    python3 -m venv .venv
 fi
 
-# Create and activate a virtual environment
-python3 -m venv .venv
 source .venv/bin/activate
 
 # Upgrade pip and install necessary packages
