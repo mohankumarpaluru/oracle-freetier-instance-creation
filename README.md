@@ -20,7 +20,7 @@ In short, this script is another way to bypass the "Out of host capacity" or "Ou
 - OS configuration based on Image ID or OS and version
 
 ## Pre-Requisites
-- **VM.Standard.E2.1.Micro Instance**: The script is designed for a Ubuntu environment, and you need an existing subnet ID for ARM instance creation. Create an always-free `VM.Standard.E2.1.Micro` instance with Ubuntu 22.04. This instance can be deleted after the ARM instance creation.
+- **VM.Standard.E2.1.Micro Instance**: The script is designed for a Ubuntu environment, and you need an existing subnet ID for ARM instance creation. Create an always-free `VM.Standard.E2.1.Micro` instance with Ubuntu 22.04. This instance can be deleted after the ARM instance creation. (Not required if an existing OCI_SUBNET_ID is defined in oci.env file)
 - **OCI API Key (Private Key) & Config Details**: Follow this [Oracle API Key Generation link](https://graph.org/Oracle-API-Key-Generation-12-11) to create the necessary API key and config details.
 - **OCI Free Availability Domain**: Identify the eligible always-free tier availability domain during instance creation.
 - **Gmail App Passkey (Optional)**: If you want to receive an email notification after instance creation and have two-factor authentication enabled, follow this [Google App's Password Generation link](https://graph.org/Google-App-Passwords-Generation-12-11) to create a custom app and obtain the passkey.
@@ -47,7 +47,6 @@ In short, this script is another way to bypass the "Out of host capacity" or "Ou
 Once the setup is complete, run the `setup_init.sh` script from the project directory. This script installs the required dependencies and starts the Python program in the background.
 ```bash
 ./setup_init.sh
-
 ```
 If you are running in a fresh `VM.Standard.E2.1.Micro` instance, you might receive a prompt *Daemons using outdated libraries*. Just click `OK`; that's due to updating the libraries through apt update and won't be asked again. 
 
@@ -64,17 +63,16 @@ In case of an unhandled exception leading to script termination, an email contai
 
 ```bash
 ./setup_init.sh rereun
-
 ```
 
 ## TODO
-- [ ] Ability to run script locally
-	- [ ] By letting user configure existing oracle subnet id in `OCI_CONFIG`
-	- [ ] By creating VPC and subnet from Script if running locally (need to handle the free tier limits)
-- [ ] Make Boot Volume Size configurable and handle errors and free tier limits
-- [ ] Assign a public IP through the script and handle free tier limits
-- [ ] Create a list of images and OS to display before launching an instance to select
-- [ ] Redirect logs to a Telegram Bot
+- [ ] Ability to run script locally :
+	- [x] By letting user configure existing oracle subnet id in `OCI_CONFIG`.
+	- [ ] By creating VPC and subnet from Script if running locally (need to handle the free tier limits).
+- [ ] Make Boot Volume Size configurable and handle errors and free tier limits.
+- [ ] Assign a public IP through the script and handle free tier limits.
+- [ ] Make the script interavtive by displaying a list of images and OS that can be used before launching an instance to select.
+- [ ] Redirect logs to a Telegram Bot.
 
 ## Environment Variables
 **Required Fields:**
@@ -85,7 +83,9 @@ In case of an unhandled exception leading to script termination, an email contai
 **Optional Fields:**
 - `DISPLAY_NAME`: Name of the Instance 
 - `REQUEST_WAIT_TIME_SECS`: Wait before trying to launch an instance again.  
-- `SSH_AUTHORIZED_KEYS_FILE`: Give the absolute path of an SSH public key for ARM instance. **The program will create a public and private key pair with the name specified if the key file doesn't exist; otherwise, it uses the one specified**.  
+- `SSH_AUTHORIZED_KEYS_FILE`: Give the absolute path of an SSH public key for ARM instance. **The program will create a public and private key pair with the name specified if the key file doesn't exist; otherwise, it uses the one specified**.
+- `OCI_SUBNET_ID`: The `OCID` of an existing subnet that will be used when creating an ARM instance.
+    >  This can be found in `Networking` >`Virtual cloud networks` > `<VPC-Name>` > `Subnet Details`.
 - `OCI_IMAGE_ID`: *Image_id* of the desired OS and version; the script will generate the `image_list.json`. 
 - `OPERATING_SYSTEM`: Exact name of the operating system 
 - `OS_VERSION`: Exact version of the operating system 

@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import smtplib
+import sys
 import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -23,6 +24,7 @@ DISPLAY_NAME = os.getenv("DISPLAY_NAME")
 WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS"))
 SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE")
 OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID", None)
+OCI_SUBNET_ID = os.getenv("OCI_SUBNET_ID", None)
 OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM")
 OS_VERSION = os.getenv("OS_VERSION")
 NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL", 'False').lower() == 'true'
@@ -241,7 +243,7 @@ def handle_errors(command, data, log):
     # Check for temporary errors that can be retried
     if "code" in data:
         if (data["code"] in ("TooManyRequests", "Out of host capacity.", 'InternalError')
-        ) or (data["message"] == "Out of host capacity."):
+        ) or (data["message"] in ("Out of host capacity.", "Bad Gateway")):
             time.sleep(WAIT_TIME)
             return True
 
@@ -336,10 +338,12 @@ def launch_instance():
     logging.info("OCI_AD_NAME: %s", oci_ad_name)
 
     # Step 3 - Get Subnet ID
-    subnets = execute_oci_command(network_client,
-                                  "list_subnets",
-                                  compartment_id=oci_tenancy)
-    oci_subnet_id = subnets[0].id
+    oci_subnet_id = OCI_SUBNET_ID
+    if not oci_subnet_id:
+        subnets = execute_oci_command(network_client,
+                                    "list_subnets",
+                                    compartment_id=oci_tenancy)
+        oci_subnet_id = subnets[0].id
     logging.info("OCI_SUBNET_ID: %s", oci_subnet_id)
 
     # Step 4 - Get Image ID of VM.Standard.A1.Flex
@@ -402,7 +406,7 @@ def launch_instance():
             if srv_err.code == "LimitExceeded":
                 logging_step5.info("%s , exiting the program", srv_err.code)
                 check_instance_state_and_write(oci_tenancy)
-                exit()
+                sys.exit()
             data = {
                 "status": srv_err.status,
                 "code": srv_err.code,
