@@ -65,7 +65,7 @@ If the `oci_config` file is found to be incorrect, the script generates an `ERRO
 In case of an unhandled exception leading to script termination, an email containing the logs is sent if opted. Otherwise, only the error logs are printed to `UNHANDLED_ERROR.log`. Review the logs and execute the script again using the following command (which skips dependency installation). If the issue persists, raise an issue with the contents of `UNHANDLED_ERROR.log`.
 
 ```bash
-./setup_init.sh rereun
+./setup_init.sh rerun
 ```
 
 ## TODO
@@ -90,7 +90,7 @@ In case of an unhandled exception leading to script termination, an email contai
 - `OCI_SUBNET_ID`: The `OCID` of an existing subnet that will be used when creating an ARM instance.
     >  This can be found in `Networking` >`Virtual cloud networks` > `<VPC-Name>` > `Subnet Details`.
 - `OCI_IMAGE_ID`: *Image_id* of the desired OS and version; the script will generate the `image_list.json`. 
-- `OCI_COMPUTE_SHAPE`: Free-tier compute shape of the instance to launch. Defaults to ARM, but configurable if you are running into capacity issues for the free AMD instance in your home region.
+- `OCI_COMPUTE_SHAPE`: Free-tier compute shape of the instance to launch. Defaults to ARM, but configurable if you are running into capacity issues for the free AMD instance in your home region. Acceptable values `VM.Standard.A1.Flex` and `VM.Standard.E2.1.Micro`.
 - `OPERATING_SYSTEM`: Exact name of the operating system 
 - `OS_VERSION`: Exact version of the operating system 
 - `NOTIFY_EMAIL`: Make it True if you want to get notified and provide email and password

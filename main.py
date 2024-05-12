@@ -9,6 +9,7 @@ import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
+from typing import Union
 
 import oci
 import paramiko
@@ -17,6 +18,9 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv('oci.env')
 
+ARM_SHAPE = "VM.Standard.A1.Flex"
+E2_MICRO_SHAPE = "VM.Standard.E2.1.Micro"
+
 # Access loaded environment variables
 OCI_CONFIG = os.getenv("OCI_CONFIG")
 OCT_FREE_AD = os.getenv("OCT_FREE_AD")
@@ -24,7 +28,9 @@ DISPLAY_NAME = os.getenv("DISPLAY_NAME")
 WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS"))
 SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE")
 OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID", None)
-OCI_COMPUTE_SHAPE = os.getenv("OCI_COMPUTE_SHAPE", "VM.Standard.A1.Flex")
+OCI_COMPUTE_SHAPE = os.getenv("OCI_COMPUTE_SHAPE", ARM_SHAPE)
+if OCI_COMPUTE_SHAPE not in (ARM_SHAPE, E2_MICRO_SHAPE):
+    raise ValueError(f"{OCI_COMPUTE_SHAPE} is not an acceptable shape")
 OCI_SUBNET_ID = os.getenv("OCI_SUBNET_ID", None)
 OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM")
 OS_VERSION = os.getenv("OS_VERSION")
@@ -80,7 +86,7 @@ def write_into_file(file_path, data):
         file_path (str): The path of the file.
         data (str): The data to be written into the file.
     """
-    with open(file_path, "w", encoding="utf-8") as file_writer:
+    with open(file_path, mode="a", encoding="utf-8") as file_writer:
         file_writer.write(data)
 
 
@@ -155,11 +161,13 @@ def generate_html_body(instance):
     return html_body
 
 
-def create_instance_details_file_and_notify(instance):
+def create_instance_details_file_and_notify(instance, shape=ARM_SHAPE):
     """Create a file with details of instances and notify the user.
 
     Args:
         instance (dict): The instance dictionary returned from the OCI service.
+        shape (str): shape of the instance to be created, acceptable values are
+         "VM.Standard.A1.Flex", "VM.Standard.E2.1.Micro"
     """
     details = [f"Instance ID: {instance.id}",
                f"Display Name: {instance.display_name}",
@@ -167,7 +175,9 @@ def create_instance_details_file_and_notify(instance):
                f"Shape: {instance.shape}",
                f"State: {instance.lifecycle_state}",
                "\n"]
-    body = '\n'.join(details)
+    micro_body = 'TWo Micro Instances are already existing and running'
+    arm_body = '\n'.join(details)
+    body = arm_body if shape == ARM_SHAPE else micro_body
     write_into_file('INSTANCE_CREATED', body)
 
     # Generate HTML body for email
@@ -178,11 +188,11 @@ def create_instance_details_file_and_notify(instance):
 
 
 def notify_on_failure(failure_msg):
-    """Notifies users when the Instance Creation Failed due to an error thats
+    """Notifies users when the Instance Creation Failed due to an error that's
     not handled.
 
     Args:
-        instance (dict): The instance dictionary returned from the OCI service.
+        failure_msg (msg): The error message.
     """
 
     mail_body = (
@@ -213,14 +223,18 @@ def check_instance_state_and_write(compartment_id, shape, states=('RUNNING', 'PR
     """
     for _ in range(tries):
         instance_list = list_all_instances(compartment_id=compartment_id)
-        running_arm_instance = next(
-            (instance for instance in instance_list if instance.shape == shape and instance.lifecycle_state in states),
-            None)
-
-        if running_arm_instance:
-            create_instance_details_file_and_notify(running_arm_instance)
-            return True
-
+        if shape == ARM_SHAPE:
+            running_arm_instance = next((instance for instance in instance_list if
+                                         instance.shape == shape and instance.lifecycle_state in states), None)
+            if running_arm_instance:
+                create_instance_details_file_and_notify(running_arm_instance, shape)
+                return True
+        else:
+            micro_instance_list = [instance for instance in instance_list if
+                                   instance.shape == shape and instance.lifecycle_state in states]
+            if len(micro_instance_list) > 1:
+                create_instance_details_file_and_notify(micro_instance_list[-1], shape)
+                return True
         if tries - 1 > 0:
             time.sleep(60)
 
@@ -239,16 +253,17 @@ def handle_errors(command, data, log):
         bool: True if the error is temporary and the operation should be retried after a delay.
         Raises Exception for unexpected errors.
     """
-    log.info("Command: %s\nOutput: %s", command, data)
 
     # Check for temporary errors that can be retried
     if "code" in data:
-        if (data["code"] in ("TooManyRequests", "Out of host capacity.", 'InternalError')
-        ) or (data["message"] in ("Out of host capacity.", "Bad Gateway")):
+        if (data["code"] in ("TooManyRequests", "Out of host capacity.", 'InternalError')) \
+                or (data["message"] in ("Out of host capacity.", "Bad Gateway")):
+            log.info("Command: %s--\nOutput: %s", command, data)
             time.sleep(WAIT_TIME)
             return True
 
     if "status" in data and data["status"] == 502:
+        log.info("Command: %s~~\nOutput: %s", command, data)
         time.sleep(WAIT_TIME)
         return True
     failure_msg = '\n'.join([f'{key}: {value}' for key, value in data.items()])
@@ -277,16 +292,19 @@ def execute_oci_command(client, method, *args, **kwargs):
             response = getattr(client, method)(*args, **kwargs)
             data = response.data if hasattr(response, "data") else response
             return data
-        except oci.exceptions.ServiceError as err:
-            handle_errors(args, err, logging)
+        except oci.exceptions.ServiceError as srv_err:
+            data = {"status": srv_err.status,
+                    "code": srv_err.code,
+                    "message": srv_err.message}
+            handle_errors(args, data, logging_step5)
 
 
-def generate_ssh_key_pair(public_key_file, private_key_file):
+def generate_ssh_key_pair(public_key_file: Union[str, Path], private_key_file: Union[str, Path]):
     """Generates an SSH key pair and saves them to the specified files.
 
     Args:
-        public_key_file (str): The file to save the public key.
-        private_key_file (str): The file to save the private key.
+        public_key_file :file to save the public key.
+        private_key_file : The file to save the private key.
     """
     key = paramiko.RSAKey.generate(2048)
     key.write_private_key_file(private_key_file)
@@ -295,14 +313,14 @@ def generate_ssh_key_pair(public_key_file, private_key_file):
                                       f"{Path(public_key_file).stem}_auto_generated"))
 
 
-def read_or_generate_ssh_public_key(public_key_file):
+def read_or_generate_ssh_public_key(public_key_file: Union[str, Path]):
     """Reads the SSH public key from the file if it exists, else generates and reads it.
 
     Args:
-        public_key_file (str): The file containing the public key.
+        public_key_file: The file containing the public key.
 
     Returns:
-        str: The SSH public key.
+        Union[str, Path]: The SSH public key.
     """
     public_key_path = Path(public_key_file)
 
@@ -334,7 +352,7 @@ def launch_instance():
                                                "list_availability_domains",
                                                compartment_id=oci_tenancy)
     oci_ad_name = [item.name for item in availability_domains if
-                   any(item.name.endswith(oct) for oct in OCT_FREE_AD.split(","))]
+                   any(item.name.endswith(oct_ad) for oct_ad in OCT_FREE_AD.split(","))]
     oci_ad_names = itertools.cycle(oci_ad_name)
     logging.info("OCI_AD_NAME: %s", oci_ad_name)
 
@@ -342,8 +360,8 @@ def launch_instance():
     oci_subnet_id = OCI_SUBNET_ID
     if not oci_subnet_id:
         subnets = execute_oci_command(network_client,
-                                    "list_subnets",
-                                    compartment_id=oci_tenancy)
+                                      "list_subnets",
+                                      compartment_id=oci_tenancy)
         oci_subnet_id = subnets[0].id
     logging.info("OCI_SUBNET_ID: %s", oci_subnet_id)
 

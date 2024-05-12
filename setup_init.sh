@@ -32,10 +32,12 @@ nohup python3 main.py > /dev/null 2>&1 &
 
 # Check for the existence of ERROR_IN_CONFIG.log after running the Python program
 sleep 5  # Wait for a few seconds to allow the program to run and create the log file (if applicable)
-if [ -f "launch_instance.log" ]; then
+if [ -s "launch_instance.log" ]; then
     echo "Script is running successfully"
-elif [ -f "ERROR_IN_CONFIG.log" ]; then
+elif [ -s "ERROR_IN_CONFIG.log" ]; then
     echo "Error occurred, check ERROR_IN_CONFIG.log and rerun the script"
+elif [ -s "INSTANCE_CREATED" ]; then
+    echo "Instance created or Already existing has reached Free tier limit. Check 'INSTANCE_CREATED' File"
 else
     echo "Unhandled Exception Occurred."
 fi
