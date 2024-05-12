@@ -24,6 +24,7 @@ DISPLAY_NAME = os.getenv("DISPLAY_NAME")
 WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS"))
 SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE")
 OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID", None)
+OCI_COMPUTE_SHAPE = os.getenv("OCI_COMPUTE_SHAPE", "VM.Standard.A1.Flex")
 OCI_SUBNET_ID = os.getenv("OCI_SUBNET_ID", None)
 OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM")
 OS_VERSION = os.getenv("OS_VERSION")
@@ -197,13 +198,13 @@ def notify_on_failure(failure_msg):
         send_email('OCI INSTANCE CREATION SCRIPT: FAILED DUE TO AN ERROR', mail_body, EMAIL, EMAIL_PASSWORD)
 
 
-def check_instance_state_and_write(compartment_id, shape="VM.Standard.A1.Flex", states=('RUNNING', 'PROVISIONING'),
+def check_instance_state_and_write(compartment_id, shape, states=('RUNNING', 'PROVISIONING'),
                                    tries=3):
     """Check the state of instances in the specified compartment and take action when a matching instance is found.
 
     Args:
         compartment_id (str): The compartment ID to check for instances.
-        shape (str, optional): The shape of the instance. Defaults to "VM.Standard.A1.Flex".
+        shape (str): The shape of the instance.
         states (tuple, optional): The lifecycle states to consider. Defaults to ('RUNNING', 'PROVISIONING').
         tries(int, optional): No of reties until an instance is found. Defaults to 3.
 
@@ -346,13 +347,13 @@ def launch_instance():
         oci_subnet_id = subnets[0].id
     logging.info("OCI_SUBNET_ID: %s", oci_subnet_id)
 
-    # Step 4 - Get Image ID of VM.Standard.A1.Flex
+    # Step 4 - Get Image ID of Compute Shape
     if not OCI_IMAGE_ID:
         images = execute_oci_command(
             compute_client,
             "list_images",
             compartment_id=oci_tenancy,
-            shape="VM.Standard.A1.Flex",
+            shape=OCI_COMPUTE_SHAPE,
         )
         shortened_images = [{key: json.loads(str(image))[key] for key in IMAGE_LIST_KEYS
                              } for image in images]
@@ -367,7 +368,13 @@ def launch_instance():
     ssh_public_key = read_or_generate_ssh_public_key(SSH_AUTHORIZED_KEYS_FILE)
 
     # Step 5 - Launch Instance if it's not already exist and running
-    instance_exist_flag = check_instance_state_and_write(oci_tenancy, tries=1)
+    instance_exist_flag = check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE, tries=1)
+
+    if OCI_COMPUTE_SHAPE == "VM.Standard.A1.Flex":
+        shape_config = oci.core.models.LaunchInstanceShapeConfigDetails(ocpus=4, memory_in_gbs=24)
+    else:
+        shape_config = oci.core.models.LaunchInstanceShapeConfigDetails(ocpus=1, memory_in_gbs=1)
+
     while not instance_exist_flag:
         try:
             launch_instance_response = compute_client.launch_instance(
@@ -381,7 +388,7 @@ def launch_instance():
                         subnet_id=oci_subnet_id,
                     ),
                     display_name=DISPLAY_NAME,
-                    shape="VM.Standard.A1.Flex",
+                    shape=OCI_COMPUTE_SHAPE,
                     image_id=oci_image_id,
                     availability_config=oci.core.models.LaunchInstanceAvailabilityConfigDetails(
                         recovery_action="RESTORE_INSTANCE"
@@ -389,9 +396,7 @@ def launch_instance():
                     instance_options=oci.core.models.InstanceOptions(
                         are_legacy_imds_endpoints_disabled=False
                     ),
-                    shape_config=oci.core.models.LaunchInstanceShapeConfigDetails(
-                        ocpus=4, memory_in_gbs=24
-                    ),
+                    shape_config=shape_config,
                     metadata={
                         "ssh_authorized_keys": ssh_public_key},
                 )
@@ -400,12 +405,12 @@ def launch_instance():
                 logging_step5.info(
                     "Command: launch_instance\nOutput: %s", launch_instance_response
                 )
-                instance_exist_flag = check_instance_state_and_write(oci_tenancy)
+                instance_exist_flag = check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE)
 
         except oci.exceptions.ServiceError as srv_err:
             if srv_err.code == "LimitExceeded":
                 logging_step5.info("%s , exiting the program", srv_err.code)
-                check_instance_state_and_write(oci_tenancy)
+                check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE)
                 sys.exit()
             data = {
                 "status": srv_err.status,

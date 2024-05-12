@@ -4,7 +4,7 @@
 [![GitHub issues](https://img.shields.io/github/issues/mohankumarpaluru/oracle-freetier-instance-creation?color=brightgreen)](https://github.com/mohankumarpaluru/oracle-freetier-instance-creation/issues) [![GitHub forks](https://img.shields.io/github/forks/mohankumarpaluru/oracle-freetier-instance-creation?color=brightgreen)](https://github.com/mohankumarpaluru/oracle-freetier-instance-creation/network) [![GitHub license](https://img.shields.io/github/license/mohankumarpaluru/oracle-freetier-instance-creation?color=brightgreen)](https://github.com/mohankumarpaluru/oracle-freetier-instance-creation/blob/main/LICENSE) 
 
 
-This project provides Python and shell scripts to automate the creation of Oracle Free Tier ARM instances (4 OCPU, 24 GB RAM) with minimal manual intervention. Acquiring resources in certain availability domains can be challenging due to high demand, and repeatedly attempting creation through the Oracle console is impractical. While other methods like OCI CLI and PHP are available (linked at the end), this solution aims to streamline the process by implementing it in Python.
+This project provides Python and shell scripts to automate the creation of Oracle Free Tier ARM instances (4 OCPU, 24 GB RAM) or the Oracle Free Tier AMD instance (1 OCPU, 1 GB RAM) with minimal manual intervention. Acquiring resources in certain availability domains can be challenging due to high demand, and repeatedly attempting creation through the Oracle console is impractical. While other methods like OCI CLI and PHP are available (linked at the end), this solution aims to streamline the process by implementing it in Python.
 
 The script attempts to create an instance every 60 seconds or as per the `REQUEST_WAIT_TIME_SECS` variable specified in the `oci.env` file until the instance is successfully created. Upon completion, a file named `INSTANCE_CREATED` is generated in the project directory, containing details about the newly created instance. Additionally, you can configure the script to send a Gmail notification upon instance creation.
 
@@ -18,10 +18,12 @@ In short, this script is another way to bypass the "Out of host capacity" or "Ou
 - Gmail notification
 - SSH keys for ARM instances can be automatically created
 - OS configuration based on Image ID or OS and version
+- Compute shape configuration
 
 ## Pre-Requisites
 - **VM.Standard.E2.1.Micro Instance**: The script is designed for a Ubuntu environment, and you need an existing subnet ID for ARM instance creation. Create an always-free `VM.Standard.E2.1.Micro` instance with Ubuntu 22.04. This instance can be deleted after the ARM instance creation. (Not required if an existing OCI_SUBNET_ID is defined in oci.env file)
 - **OCI API Key (Private Key) & Config Details**: Follow this [Oracle API Key Generation link](https://graph.org/Oracle-API-Key-Generation-12-11) to create the necessary API key and config details.
+ - Note: Typically the API Key can be generated from your profile [page](https://cloud.oracle.com/identity/domains/my-profile/api-keys) > API Keys (left) > Add API Key
 - **OCI Free Availability Domain**: Identify the eligible always-free tier availability domain during instance creation.
 - **Gmail App Passkey (Optional)**: If you want to receive an email notification after instance creation and have two-factor authentication enabled, follow this [Google App's Password Generation link](https://graph.org/Google-App-Passwords-Generation-12-11) to create a custom app and obtain the passkey.
 
@@ -31,7 +33,6 @@ In short, this script is another way to bypass the "Out of host capacity" or "Ou
     ```bash
     git clone https://github.com/mohankumarpaluru/oracle-freetier-instance-creation.git
     cd oracle-freetier-instance-creation
-    chmod +x setup_init.sh
     ```
 
 2. Create a file named `oci_api_private_key.pem` and paste the contents of your API private key. The name and path of the file can be anything, but the current user should have read access.
@@ -89,6 +90,7 @@ In case of an unhandled exception leading to script termination, an email contai
 - `OCI_SUBNET_ID`: The `OCID` of an existing subnet that will be used when creating an ARM instance.
     >  This can be found in `Networking` >`Virtual cloud networks` > `<VPC-Name>` > `Subnet Details`.
 - `OCI_IMAGE_ID`: *Image_id* of the desired OS and version; the script will generate the `image_list.json`. 
+- `OCI_COMPUTE_SHAPE`: Free-tier compute shape of the instance to launch. Defaults to ARM, but configurable if you are running into capacity issues for the free AMD instance in your home region.
 - `OPERATING_SYSTEM`: Exact name of the operating system 
 - `OS_VERSION`: Exact version of the operating system 
 - `NOTIFY_EMAIL`: Make it True if you want to get notified and provide email and password
@@ -97,5 +99,6 @@ In case of an unhandled exception leading to script termination, an email contai
 
 ## Credits and References
 - [xitroff](https://www.reddit.com/user/xitroff/): [Resolving Oracle Cloud Out of Capacity Issue and Getting Free VPS with 4 ARM Cores, 24GB of RAM](https://hitrov.medium.com/resolving-oracle-cloud-out-of-capacity-issue-and-getting-free-vps-with-4-arm-cores-24gb-of-a3d7e6a027a8)
+  - [Github Repo](https://github.com/hitrov/oci-arm-host-capacity)
 - [Oracle Launch Instance Docs](https://docs.oracle.com/en-us/iaas/api/#/en/iaas/20160918/Instance/LaunchInstance)
 - [LaunchInstanceDetails](https://docs.oracle.com/en-us/iaas/api/#/en/iaas/20160918/datatypes/LaunchInstanceDetails)
