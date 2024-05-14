@@ -32,7 +32,7 @@ nohup python3 main.py > /dev/null 2>&1 &
 
 # Check for the existence of ERROR_IN_CONFIG.log after running the Python program
 sleep 5  # Wait for a few seconds to allow the program to run and create the log file (if applicable)
-if [ -s "launch_instance.log" ]; then
+if [ -f "launch_instance.log" ]; then
     echo "Script is running successfully"
 elif [ -s "ERROR_IN_CONFIG.log" ]; then
     echo "Error occurred, check ERROR_IN_CONFIG.log and rerun the script"
