@@ -1,9 +1,8 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Use this to report if the script is not doing what you intend it to do
 title: ''
 labels: ''
-assignees: mohankumarpaluru
 
 ---
 
