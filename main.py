@@ -21,23 +21,23 @@ load_dotenv('oci.env')
 ARM_SHAPE = "VM.Standard.A1.Flex"
 E2_MICRO_SHAPE = "VM.Standard.E2.1.Micro"
 
-# Access loaded environment variables
-OCI_CONFIG = os.getenv("OCI_CONFIG")
-OCT_FREE_AD = os.getenv("OCT_FREE_AD")
-DISPLAY_NAME = os.getenv("DISPLAY_NAME")
-WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS"))
-SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE")
-OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID", None)
-OCI_COMPUTE_SHAPE = os.getenv("OCI_COMPUTE_SHAPE", ARM_SHAPE)
-SECOND_MICRO_INSTANCE = os.getenv("SECOND_MICRO_INSTANCE", 'False').lower() == 'true'
+# Access loaded environment variables and strip white spaces
+OCI_CONFIG = os.getenv("OCI_CONFIG", "").strip()
+OCT_FREE_AD = os.getenv("OCT_FREE_AD", "").strip()
+DISPLAY_NAME = os.getenv("DISPLAY_NAME", "").strip()
+WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS", "0").strip())
+SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE", "").strip()
+OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID", None).strip() if os.getenv("OCI_IMAGE_ID") else None
+OCI_COMPUTE_SHAPE = os.getenv("OCI_COMPUTE_SHAPE", ARM_SHAPE).strip()
+SECOND_MICRO_INSTANCE = os.getenv("SECOND_MICRO_INSTANCE", 'False').strip().lower() == 'true'
 if OCI_COMPUTE_SHAPE not in (ARM_SHAPE, E2_MICRO_SHAPE):
     raise ValueError(f"{OCI_COMPUTE_SHAPE} is not an acceptable shape")
-OCI_SUBNET_ID = os.getenv("OCI_SUBNET_ID", None)
-OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM")
-OS_VERSION = os.getenv("OS_VERSION")
-NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL", 'False').lower() == 'true'
-EMAIL = os.getenv("EMAIL")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+OCI_SUBNET_ID = os.getenv("OCI_SUBNET_ID", None).strip() if os.getenv("OCI_SUBNET_ID") else None
+OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM", "").strip()
+OS_VERSION = os.getenv("OS_VERSION", "").strip()
+NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL", 'False').strip().lower() == 'true'
+EMAIL = os.getenv("EMAIL", "").strip()
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "").strip()
 
 # Read the configuration from oci_config file
 config = configparser.ConfigParser()
