@@ -91,6 +91,7 @@ In case of an unhandled exception leading to script termination, an email contai
     >  This can be found in `Networking` >`Virtual cloud networks` > `<VPC-Name>` > `Subnet Details`.
 - `OCI_IMAGE_ID`: *Image_id* of the desired OS and version; the script will generate the `image_list.json`. 
 - `OCI_COMPUTE_SHAPE`: Free-tier compute shape of the instance to launch. Defaults to ARM, but configurable if you are running into capacity issues for the free AMD instance in your home region. Acceptable values `VM.Standard.A1.Flex` and `VM.Standard.E2.1.Micro`.
+- `SECOND_MICRO_INSTANCE`: `True` if you are utilizing the script for your second free tier Micro Instance, else `False`.
 - `OPERATING_SYSTEM`: Exact name of the operating system 
 - `OS_VERSION`: Exact version of the operating system 
 - `NOTIFY_EMAIL`: Make it True if you want to get notified and provide email and password

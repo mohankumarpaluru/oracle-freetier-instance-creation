@@ -29,6 +29,7 @@ WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS"))
 SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE")
 OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID", None)
 OCI_COMPUTE_SHAPE = os.getenv("OCI_COMPUTE_SHAPE", ARM_SHAPE)
+SECOND_MICRO_INSTANCE = os.getenv("SECOND_MICRO_INSTANCE", 'False').lower() == 'true'
 if OCI_COMPUTE_SHAPE not in (ARM_SHAPE, E2_MICRO_SHAPE):
     raise ValueError(f"{OCI_COMPUTE_SHAPE} is not an acceptable shape")
 OCI_SUBNET_ID = os.getenv("OCI_SUBNET_ID", None)
@@ -232,9 +233,12 @@ def check_instance_state_and_write(compartment_id, shape, states=('RUNNING', 'PR
         else:
             micro_instance_list = [instance for instance in instance_list if
                                    instance.shape == shape and instance.lifecycle_state in states]
-            if len(micro_instance_list) > 1:
+            if len(micro_instance_list) > 1 and SECOND_MICRO_INSTANCE:
                 create_instance_details_file_and_notify(micro_instance_list[-1], shape)
                 return True
+            if len(micro_instance_list) == 1 and not SECOND_MICRO_INSTANCE:
+                create_instance_details_file_and_notify(micro_instance_list[-1], shape)
+                return True       
         if tries - 1 > 0:
             time.sleep(60)
 
@@ -426,10 +430,14 @@ def launch_instance():
                 instance_exist_flag = check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE)
 
         except oci.exceptions.ServiceError as srv_err:
-            if srv_err.code == "LimitExceeded":
-                logging_step5.info("%s , exiting the program", srv_err.code)
-                check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE)
-                sys.exit()
+            if srv_err.code == "LimitExceeded":                
+                logging_step5.info("Encoundered LimitExceeded Error checking if instance is created" \
+                                   "code :%s, message: %s, status: %s", srv_err.code, srv_err.message, srv_err.status)                
+                instance_exist_flag = check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE)
+                if instance_exist_flag:
+                    logging_step5.info("%s , exiting the program", srv_err.code)
+                    sys.exit()
+                logging_step5.info("Didn't find an instance , proceeding with retries")     
             data = {
                 "status": srv_err.status,
                 "code": srv_err.code,
