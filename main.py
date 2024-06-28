@@ -30,8 +30,6 @@ SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE", "").strip()
 OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID", None).strip() if os.getenv("OCI_IMAGE_ID") else None
 OCI_COMPUTE_SHAPE = os.getenv("OCI_COMPUTE_SHAPE", ARM_SHAPE).strip()
 SECOND_MICRO_INSTANCE = os.getenv("SECOND_MICRO_INSTANCE", 'False').strip().lower() == 'true'
-if OCI_COMPUTE_SHAPE not in (ARM_SHAPE, E2_MICRO_SHAPE):
-    raise ValueError(f"{OCI_COMPUTE_SHAPE} is not an acceptable shape")
 OCI_SUBNET_ID = os.getenv("OCI_SUBNET_ID", None).strip() if os.getenv("OCI_SUBNET_ID") else None
 OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM", "").strip()
 OS_VERSION = os.getenv("OS_VERSION", "").strip()
@@ -44,6 +42,22 @@ config = configparser.ConfigParser()
 try:
     config.read(OCI_CONFIG)
     OCI_USER_ID = config.get('DEFAULT', 'user')
+    if OCI_COMPUTE_SHAPE not in (ARM_SHAPE, E2_MICRO_SHAPE):
+        raise ValueError(f"{OCI_COMPUTE_SHAPE} is not an acceptable shape")
+    env_has_spaces = any(isinstance(confg_var, str) and "" in confg_var
+                        for confg_var in [OCI_CONFIG, OCT_FREE_AD,WAIT_TIME,
+                                SSH_AUTHORIZED_KEYS_FILE, OCI_IMAGE_ID, 
+                                OCI_COMPUTE_SHAPE, SECOND_MICRO_INSTANCE, 
+                                OCI_SUBNET_ID, OS_VERSION, NOTIFY_EMAIL,EMAIL,
+                                EMAIL_PASSWORD]
+                        )
+    config_has_spaces = any(' ' in value for section in config.sections() 
+                            for _, value in config.items(section))
+    if env_has_spaces:
+        raise ValueError("oci.env has spaces in values which is not acceptable")
+    if config_has_spaces:
+        raise ValueError("oci_config has spaces in values which is not acceptable")        
+
 except configparser.Error as e:
     with open("ERROR_IN_CONFIG.log", "w", encoding='utf-8') as file:
         file.write(str(e))
