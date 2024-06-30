@@ -44,7 +44,7 @@ try:
     OCI_USER_ID = config.get('DEFAULT', 'user')
     if OCI_COMPUTE_SHAPE not in (ARM_SHAPE, E2_MICRO_SHAPE):
         raise ValueError(f"{OCI_COMPUTE_SHAPE} is not an acceptable shape")
-    env_has_spaces = any(isinstance(confg_var, str) and "" in confg_var
+    env_has_spaces = any(isinstance(confg_var, str) and " " in confg_var
                         for confg_var in [OCI_CONFIG, OCT_FREE_AD,WAIT_TIME,
                                 SSH_AUTHORIZED_KEYS_FILE, OCI_IMAGE_ID, 
                                 OCI_COMPUTE_SHAPE, SECOND_MICRO_INSTANCE, 
