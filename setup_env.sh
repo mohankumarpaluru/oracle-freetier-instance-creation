@@ -33,7 +33,7 @@ clear
 read -p "Enter the Subnet OCID (or press Enter to skip): " SUBNET_ID
 clear
 
-read -p "Enter the Image OCID (or press Enter to skip): " SUBNET_ID
+read -p "Enter the Image OCID (or press Enter to skip): " IMAGE_ID
 clear
 
 while true; do
