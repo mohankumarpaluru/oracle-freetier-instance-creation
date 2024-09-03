@@ -30,6 +30,24 @@ while true; do
 done
 clear
 
+while true; do
+    read -p "Use the script for your second free tier Micro Instance? (y/n): " BOOL_MICRO
+    
+    BOOL_MICRO=$(echo "$BOOL_MICRO" | tr '[:upper:]' '[:lower:]')
+
+    if [[ $BOOL_MICRO == "y" ]]; then
+        BOOL_MICRO="True"
+        break 
+    elif [[ $BOOL_MICRO == "n" ]]; then
+        BOOL_MICRO="False"
+        break 
+    else
+        clear
+        echo "Invalid choice. Please try again (CTRL+C to quit)"
+    fi
+done
+clear
+
 read -p "Enter the Subnet OCID (or press Enter to skip): " SUBNET_ID
 clear
 
@@ -68,8 +86,8 @@ OCI_CONFIG=$HOME/oracle-freetier-instance-creation/oci_config
 OCT_FREE_AD=AD-1
 DISPLAY_NAME=$INSTANCE_NAME
 # The other free shape is AMD: VM.Standard.E2.1.Micro
-OCI_COMPUTE_SHAPE=VM.Standard.A1.Flex
-SECOND_MICRO_INSTANCE=False
+OCI_COMPUTE_SHAPE=$SHAPE
+SECOND_MICRO_INSTANCE=$BOOL_MICRO
 REQUEST_WAIT_TIME_SECS=60
 SSH_AUTHORIZED_KEYS_FILE=$HOME/oracle-freetier-instance-creation/id_rsa.pub
 # SUBNET_ID to use ONLY in case running in local or a non E2.1.Micro instance 
