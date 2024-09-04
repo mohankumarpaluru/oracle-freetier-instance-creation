@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# oci_config_setup.sh
+# This script sets up the OCI configuration interactively and creates an oci.env file.
+
 display_choices(){
 cat <<EOF
 Choose one of the two free shapes
@@ -17,16 +20,20 @@ while true; do
     
     read -p "Enter your choice (1 or 2): " SHAPE
     
-    if [[ $SHAPE == "1" ]]; then
-        SHAPE="VM.Standard.A1.Flex"
-        break 
-    elif [[ $SHAPE == "2" ]]; then
-        SHAPE="VM.Standard.E2.1.Micro"
-        break 
-    else
-        clear
-        echo "Invalid choice. Please try again. (CTRL+C to quit)"
-    fi
+    case $SHAPE in
+        1)
+            SHAPE="VM.Standard.A1.Flex"
+            break
+            ;;
+        2)
+            SHAPE="VM.Standard.E2.1.Micro"
+            break
+            ;;
+        *)
+            clear
+            echo "Invalid choice. Please try again. (CTRL+C to quit)"
+            ;;
+    esac
 done
 clear
 
@@ -35,16 +42,20 @@ while true; do
     
     BOOL_MICRO=$(echo "$BOOL_MICRO" | tr '[:upper:]' '[:lower:]')
 
-    if [[ $BOOL_MICRO == "y" ]]; then
-        BOOL_MICRO="True"
-        break 
-    elif [[ $BOOL_MICRO == "n" ]]; then
-        BOOL_MICRO="False"
-        break 
-    else
-        clear
-        echo "Invalid choice. Please try again (CTRL+C to quit)"
-    fi
+    case $BOOL_MICRO in
+        y)
+            BOOL_MICRO="True"
+            break
+            ;;
+        n)
+            BOOL_MICRO="False"
+            break
+            ;;
+        *)
+            clear
+            echo "Invalid choice. Please try again (CTRL+C to quit)"
+            ;;
+    esac
 done
 clear
 
@@ -55,20 +66,24 @@ read -p "Enter the Image OCID (or press Enter to skip): " IMAGE_ID
 clear
 
 while true; do
-    read -p "Enable gmail notification? (y/n): " BOOL_MAIL
+    read -p "Enable Gmail notification? (y/n): " BOOL_MAIL
     
     BOOL_MAIL=$(echo "$BOOL_MAIL" | tr '[:upper:]' '[:lower:]')
 
-    if [[ $BOOL_MAIL == "y" ]]; then
-        BOOL_MAIL="True"
-        break 
-    elif [[ $BOOL_MAIL == "n" ]]; then
-        BOOL_MAIL="False"
-        break 
-    else
-        clear
-        echo "Invalid choice. Please try again (CTRL+C to quit)"
-    fi
+    case $BOOL_MAIL in
+        y)
+            BOOL_MAIL="True"
+            break
+            ;;
+        n)
+            BOOL_MAIL="False"
+            break
+            ;;
+        *)
+            clear
+            echo "Invalid choice. Please try again (CTRL+C to quit)"
+            ;;
+    esac
 done
 clear
 
@@ -80,6 +95,13 @@ if [[ $BOOL_MAIL == "True" ]]; then
     clear
 fi
 
+# Backup existing oci.env if it exists
+if [ -f oci.env ]; then
+    mv oci.env oci.env.bak
+    echo "Existing oci.env file backed up as oci.env.bak"
+fi
+
+# Create the new oci.env file with the gathered configuration
 cat <<EOF > oci.env
 # OCI Configuration
 OCI_CONFIG=$HOME/oracle-freetier-instance-creation/oci_config
@@ -102,3 +124,5 @@ NOTIFY_EMAIL=$BOOL_MAIL
 EMAIL=$EMAIL
 EMAIL_PASSWORD=$EMAIL_PASS
 EOF
+
+echo "OCI env configuration saved to oci.env"

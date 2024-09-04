@@ -43,6 +43,18 @@ In short, this script is another way to bypass the "Out of host capacity" or "Ou
 
 5. Edit the **`oci.env`** file and fill in the necessary details. Refer [below for more information](https://github.com/mohankumarpaluru/oracle-freetier-instance-creation#environment-variables) `oci.env` fields.
 
+	You can also use run the `setup_env.sh` script to interactively generate the `oci.env` file with your desired configuration:
+
+    ```bash
+    ./setup_env.sh
+    ```
+
+    This script will guide you through the process of configuring your instance settings, including the instance name, compute shape, optional Gmail notifications, and more.
+
+    > [!Note]
+    > If an `oci.env` file already exists, the script will create a backup of the current file as `oci.env.bak`.
+
+
 ## Run
 
 Once the setup is complete, run the `setup_init.sh` script from the project directory. This script installs the required dependencies and starts the Python program in the background.
