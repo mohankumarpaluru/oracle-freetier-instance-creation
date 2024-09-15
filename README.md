@@ -80,6 +80,39 @@ In case of an unhandled exception leading to script termination, an email contai
 ./setup_init.sh rerun
 ```
 
+## OCI Instance Creation Flow
+
+```mermaid
+flowchart TD
+    A([Start]) --> B[Load Environment Variables]
+    B --> C[Initialize OCI Clients]
+    C --> D{Instance Exists?}
+    D -->|Yes| E[Notify Success]
+    D -->|No| F[Generate/Read SSH Key]
+    F --> G[Gather OCI Resources]
+    G --> K[Launch Instance]
+    K --> L{Launch Successful?}
+    L -->|Yes| M[Check Instance State]
+    L -->|No| N[Handle Errors]
+    N --> K
+    M -->|Running| E
+    M -->|Not Running| O[Wait and Retry]
+    O --> K
+    E --> P([End])
+
+    classDef oci fill:#FF9900,stroke:#FF6600,stroke-width:2px,color:white;
+    classDef local fill:#66B2FF,stroke:#0066CC,stroke-width:2px,color:white;
+    classDef env fill:#99CC00,stroke:#669900,stroke-width:2px,color:white;
+    classDef error fill:#FF6666,stroke:#CC0000,stroke-width:2px,color:white;
+    classDef startEnd fill:#4CAF50,stroke:#45a049,stroke-width:2px,color:white
+
+    class A,P startEnd
+    class B,F env;
+    class C,G,K,M oci;
+    class D,E,L local;
+    class N,O error;
+```
+
 ## TODO
 - [ ] Ability to run script locally :
 	- [x] By letting user configure existing oracle subnet id in `OCI_CONFIG`.
