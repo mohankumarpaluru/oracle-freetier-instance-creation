@@ -37,8 +37,24 @@ send_discord_message() {
 # Load environment variables
 source oci.env
 
+# Function to clean up and send notification
+cleanup() {
+    send_discord_message "🛑 Heads up! The OCI Instance Creation Script has been interrupted or stopped."
+    exit 0
+}
+
+# Function to handle suspension (Ctrl+Z)
+handle_suspend() {
+    send_discord_message "⏸️ The OCI Instance Creation Script has been suspended."
+    kill -STOP $$
+}
+
+# Set up traps to catch various signals
+trap cleanup SIGINT SIGTERM
+trap handle_suspend SIGTSTP
+
 # Run the Python program in the background
-nohup python3 main.py > /dev/null 2>&1 &
+python3 main.py &
 
 # Store the PID of the background process
 SCRIPT_PID=$!
