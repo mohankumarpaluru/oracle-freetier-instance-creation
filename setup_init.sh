@@ -56,7 +56,7 @@ trap cleanup SIGINT SIGTERM
 trap handle_suspend SIGTSTP
 
 # Run the Python program in the background
-python3 main.py &
+nohup python3 main.py > /dev/null 2>&1 &
 
 # Store the PID of the background process
 SCRIPT_PID=$!
