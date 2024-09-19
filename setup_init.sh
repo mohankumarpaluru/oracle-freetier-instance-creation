@@ -40,12 +40,14 @@ source oci.env
 # Function to clean up and send notification
 cleanup() {
     send_discord_message "🛑 Heads up! The OCI Instance Creation Script has been interrupted or stopped."
+    kill $SCRIPT_PID
     exit 0
 }
 
 # Function to handle suspension (Ctrl+Z)
 handle_suspend() {
     send_discord_message "⏸️ The OCI Instance Creation Script has been suspended."
+    kill -STOP $SCRIPT_PID
     kill -STOP $$
 }
 
@@ -96,7 +98,7 @@ while is_script_running; do
     sleep 60
 done
 
-send_discord_message "🛑 Heads up! The OCI Instance Creation Script has stopped running."
+send_discord_message "🏁 The OCI Instance Creation Script has finished running."
 
 # Deactivate the virtual environment
 deactivate
