@@ -34,6 +34,9 @@ send_discord_message() {
     fi
 }
 
+# Add this near the top of the script, after the send_discord_message function is defined
+trap 'send_discord_message "🛑 The setup_init.sh script has been terminated."' EXIT
+
 # Load environment variables
 source oci.env
 
