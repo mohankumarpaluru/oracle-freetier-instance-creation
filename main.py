@@ -14,6 +14,7 @@ from typing import Union
 import oci
 import paramiko
 from dotenv import load_dotenv
+import requests
 
 # Load environment variables from .env file
 load_dotenv('oci.env')
@@ -36,6 +37,7 @@ OS_VERSION = os.getenv("OS_VERSION", "").strip()
 NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL", 'False').strip().lower() == 'true'
 EMAIL = os.getenv("EMAIL", "").strip()
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "").strip()
+DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK", "").strip()
 
 # Read the configuration from oci_config file
 config = configparser.ConfigParser()
@@ -49,7 +51,7 @@ try:
                                 SSH_AUTHORIZED_KEYS_FILE, OCI_IMAGE_ID, 
                                 OCI_COMPUTE_SHAPE, SECOND_MICRO_INSTANCE, 
                                 OCI_SUBNET_ID, OS_VERSION, NOTIFY_EMAIL,EMAIL,
-                                EMAIL_PASSWORD]
+                                EMAIL_PASSWORD, DISCORD_WEBHOOK]
                         )
     config_has_spaces = any(' ' in value for section in config.sections() 
                             for _, value in config.items(section))
@@ -354,6 +356,17 @@ def read_or_generate_ssh_public_key(public_key_file: Union[str, Path]):
     return ssh_public_key
 
 
+def send_discord_message(message):
+    """Send a message to Discord using the webhook URL if available."""
+    if DISCORD_WEBHOOK:
+        payload = {"content": message}
+        try:
+            response = requests.post(DISCORD_WEBHOOK, json=payload)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            logging.error("Failed to send Discord message: %s", e)
+
+
 def launch_instance():
     """Launches an OCI Compute instance using the specified parameters.
 
@@ -461,4 +474,11 @@ def launch_instance():
 
 
 if __name__ == "__main__":
-    launch_instance()
+    send_discord_message("🚀 OCI Instance Creation Script: Starting up! Let's create some cloud magic!")
+    try:
+        launch_instance()
+        send_discord_message("🎉 Success! OCI Instance has been created. Time to celebrate!")
+    except Exception as e:
+        error_message = f"😱 Oops! Something went wrong with the OCI Instance Creation Script:\n{str(e)}"
+        send_discord_message(error_message)
+        raise
