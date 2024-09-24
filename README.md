@@ -142,6 +142,24 @@ flowchart TD
 - `NOTIFY_EMAIL`: Make it True if you want to get notified and provide email and password
 - `EMAIL`: Only Gmail is allowed, the same email will be used for *FROM* and *TO*
 - `EMAIL_PASSWORD`: If two-factor authentication is set, create an App Password and specify it, not the email password. Direct password will work if no two-factor authentication is configured for the email.
+- `DISCORD_WEBHOOK_URL`: URL of the Discord webhook for notifications (optional)
+
+## Discord Webhook Notifications
+
+To receive notifications via Discord when an instance is created or when errors occur, you can set up a Discord webhook:
+
+1. In your Discord server, go to Server Settings > Integrations > Webhooks.
+2. Click "New Webhook" and configure it for the channel where you want to receive notifications.
+3. Copy the webhook URL.
+4. Add the following line to your `oci.env` file:
+
+```
+DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
+```
+
+Replace `your_discord_webhook_url_here` with the actual webhook URL you copied.
+
+When configured, the script will send notifications to the specified Discord channel upon successful instance creation or if any errors occur during the process.
 
 ## Credits and References
 - [xitroff](https://www.reddit.com/user/xitroff/): [Resolving Oracle Cloud Out of Capacity Issue and Getting Free VPS with 4 ARM Cores, 24GB of RAM](https://hitrov.medium.com/resolving-oracle-cloud-out-of-capacity-issue-and-getting-free-vps-with-4-arm-cores-24gb-of-a3d7e6a027a8)

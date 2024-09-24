@@ -95,6 +95,9 @@ if [[ $BOOL_MAIL == "True" ]]; then
     clear
 fi
 
+read -p "Enter Discord webhook URL (or press Enter to skip): " DISCORD_WEBHOOK
+clear
+
 # Backup existing oci.env if it exists
 if [ -f oci.env ]; then
     mv oci.env oci.env.bak
@@ -123,6 +126,9 @@ OS_VERSION=22.04
 NOTIFY_EMAIL=$BOOL_MAIL
 EMAIL=$EMAIL
 EMAIL_PASSWORD=$EMAIL_PASS
+
+# Discord Notification (optional)
+DISCORD_WEBHOOK=$DISCORD_WEBHOOK
 EOF
 
 echo "OCI env configuration saved to oci.env"
