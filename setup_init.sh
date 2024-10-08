@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Check if any log files exist
 if ls *.log >/dev/null 2>&1; then
@@ -12,9 +12,11 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Check if the argument is 'rerun'
 if [ "$1" != "rerun" ]; then
-    # Update package lists and install required packages without confirmation
-    sudo apt update -y
-    sudo apt install python3-venv -y
+    if type apt >/dev/null 2>&1; then
+        # Update package lists and install required packages without confirmation
+        sudo apt update -y
+        sudo apt install python3-venv -y
+    fi
     python3 -m venv .venv
 fi
 

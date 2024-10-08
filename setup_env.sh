@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # oci_config_setup.sh
 # This script sets up the OCI configuration interactively and creates an oci.env file.
