@@ -34,6 +34,7 @@ SECOND_MICRO_INSTANCE = os.getenv("SECOND_MICRO_INSTANCE", 'False').strip().lowe
 OCI_SUBNET_ID = os.getenv("OCI_SUBNET_ID", None).strip() if os.getenv("OCI_SUBNET_ID") else None
 OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM", "").strip()
 OS_VERSION = os.getenv("OS_VERSION", "").strip()
+ASSIGN_PUBLIC_IP = os.getenv("ASSIGN_PUBLIC_IP", "false").strip()
 NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL", 'False').strip().lower() == 'true'
 EMAIL = os.getenv("EMAIL", "").strip()
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "").strip()
@@ -414,6 +415,8 @@ def launch_instance():
     else:
         oci_image_id = OCI_IMAGE_ID
 
+    assign_public_ip = ASSIGN_PUBLIC_IP.lower() in [ "true", "1", "y", "yes" ]
+
     ssh_public_key = read_or_generate_ssh_public_key(SSH_AUTHORIZED_KEYS_FILE)
 
     # Step 5 - Launch Instance if it's not already exist and running
@@ -431,7 +434,7 @@ def launch_instance():
                     availability_domain=next(oci_ad_names),
                     compartment_id=oci_tenancy,
                     create_vnic_details=oci.core.models.CreateVnicDetails(
-                        assign_public_ip=False,
+                        assign_public_ip=assign_public_ip,
                         assign_private_dns_record=True,
                         display_name=DISPLAY_NAME,
                         subnet_id=oci_subnet_id,
