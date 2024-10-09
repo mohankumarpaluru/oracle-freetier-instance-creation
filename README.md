@@ -140,6 +140,7 @@ flowchart TD
 - `OPERATING_SYSTEM`: Exact name of the operating system 
 - `OS_VERSION`: Exact version of the operating system 
 - `ASSIGN_PUBLIC_IP`: Automatically assign an ephemeral public IP address
+- `BOOT_VOLUME_SIZE`: Size of boot volume in GB, values below 50 will be ignored and default to 50.
 - `NOTIFY_EMAIL`: Make it True if you want to get notified and provide email and password
 - `EMAIL`: Only Gmail is allowed, the same email will be used for *FROM* and *TO*
 - `EMAIL_PASSWORD`: If two-factor authentication is set, create an App Password and specify it, not the email password. Direct password will work if no two-factor authentication is configured for the email.
