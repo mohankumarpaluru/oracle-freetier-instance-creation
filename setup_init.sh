@@ -61,14 +61,14 @@ source oci.env
 
 # Function to clean up and send notification
 cleanup() {
-    send_discord_message "🛑 Heads up! The OCI Instance Creation Script has been interrupted or stopped."
+    send_notification "🛑 Heads up! The OCI Instance Creation Script has been interrupted or stopped."
     kill $SCRIPT_PID
     exit 0
 }
 
 # Function to handle suspension (Ctrl+Z)
 handle_suspend() {
-    send_discord_message "⏸️ The OCI Instance Creation Script has been suspended."
+    send_notification "⏸️ The OCI Instance Creation Script has been suspended."
     kill -STOP $SCRIPT_PID
     kill -STOP $$
 }
@@ -96,22 +96,22 @@ is_script_running() {
 sleep 5  # Wait for a few seconds to allow the program to run and create the log file (if applicable)
 if [ -s "ERROR_IN_CONFIG.log" ]; then
     echo "Error occurred, check ERROR_IN_CONFIG.log and rerun the script"
-    send_discord_message "😕 Uh-oh! There's an error in the config. Check ERROR_IN_CONFIG.log and give it another shot!"
+    send_notification "😕 Uh-oh! There's an error in the config. Check ERROR_IN_CONFIG.log and give it another shot!"
 elif [ -s "INSTANCE_CREATED" ]; then
     echo "Instance created or Already existing has reached Free tier limit. Check 'INSTANCE_CREATED' File"
-    send_discord_message "🎊 Great news! An instance was created or we've hit the Free tier limit. Check the 'INSTANCE_CREATED' file for details!"
+    send_notification "🎊 Great news! An instance was created or we've hit the Free tier limit. Check the 'INSTANCE_CREATED' file for details!"
 elif [ -s "launch_instance.log" ]; then
     echo "Script is running successfully"
-    send_discord_message "👍 All systems go! The script is running smoothly."
+    send_notification "👍 All systems go! The script is running smoothly."
 else
     echo "Couldn't find any logs waiting 60 secs before checking again"  
     sleep 60  # Wait for a 1 min to see if the file is populated
     if [ -s "launch_instance.log" ]; then
         echo "Script is running successfully"
-        send_discord_message "👍 Good news! The script is up and running after a short delay."
+        send_notification "👍 Good news! The script is up and running after a short delay."
     else
         echo "Unhandled Exception Occurred."
-        send_discord_message "😱 Yikes! An unhandled exception occurred. Time to put on the detective hat!"
+        send_notification "😱 Yikes! An unhandled exception occurred. Time to put on the detective hat!"
     fi
 fi
 
@@ -120,7 +120,7 @@ while is_script_running; do
     sleep 60
 done
 
-send_discord_message "🏁 The OCI Instance Creation Script has finished running."
+send_notification "🏁 The OCI Instance Creation Script has finished running."
 
 # Deactivate the virtual environment
 deactivate
