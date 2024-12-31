@@ -98,6 +98,12 @@ fi
 read -p "Enter Discord webhook URL (or press Enter to skip): " DISCORD_WEBHOOK
 clear
 
+read -p "Enter Telegram bot token (or press Enter to skip): " TELEGRAM_TOKEN
+clear
+
+read -p "Enter Telegram user ID (or press Enter to skip): " TELEGRAM_USER_ID
+clear
+
 # Backup existing oci.env if it exists
 if [ -f oci.env ]; then
     mv oci.env oci.env.bak
@@ -129,6 +135,10 @@ EMAIL_PASSWORD=$EMAIL_PASS
 
 # Discord Notification (optional)
 DISCORD_WEBHOOK=$DISCORD_WEBHOOK
+
+# Telegram Notification (optional)
+TELEGRAM_TOKEN=$TELEGRAM_TOKEN
+TELEGRAM_USER_ID=$TELEGRAM_USER_ID
 EOF
 
 echo "OCI env configuration saved to oci.env"

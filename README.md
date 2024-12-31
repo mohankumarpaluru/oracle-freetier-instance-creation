@@ -120,7 +120,7 @@ flowchart TD
 - [ ] Make Boot Volume Size configurable and handle errors and free tier limits.
 - [ ] Assign a public IP through the script and handle free tier limits.
 - [ ] Make the script interavtive by displaying a list of images and OS that can be used before launching an instance to select.
-- [ ] Redirect logs to a Telegram Bot.
+- [x] Redirect logs to a Telegram Bot.
 
 ## Environment Variables
 **Required Fields:**
@@ -162,6 +162,35 @@ DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
 Replace `your_discord_webhook_url_here` with the actual webhook URL you copied.
 
 When configured, the script will send notifications to the specified Discord channel upon successful instance creation or if any errors occur during the process.
+
+
+## Telegram Webhook Notifications
+
+To receive notifications via Telegram when an instance is created or when errors occur, follow these steps to set up Telegram notifications:
+
+### 1. Create a Telegram Bot
+
+1. **Open Telegram** and search for `@BotFather`.
+2. **Start a conversation** with `@BotFather` by clicking on it.
+3. **Create a new bot** by sending the `/newbot` command.
+4. **Follow the prompts** to set the bot's name and username. The username must end with `bot` (e.g., `MyInstanceBot`).
+5. After creation, **BotFather will provide a Telegram Bot Token**. **Copy this token**, as you'll need it for configuration.
+
+### 2. Find Your Telegram User ID
+
+1. **Open Telegram** and search for `@myidbot`.
+2. **Start a conversation** with `@myidbot` by sending any message (e.g., "Hello").
+3. The bot will reply with your **Telegram User ID**. **Note this ID**, as it will be used to direct notifications to your account.
+
+### 3. Configure `oci.env`
+
+Add the following lines to your `oci.env` file to enable Telegram notifications:
+
+```bash
+# Telegram Notification (optional)
+TELEGRAM_TOKEN=your_telegram_bot_token_here
+TELEGRAM_USER_ID=your_telegram_user_id_here
+```
 
 ## Credits and References
 - [xitroff](https://www.reddit.com/user/xitroff/): [Resolving Oracle Cloud Out of Capacity Issue and Getting Free VPS with 4 ARM Cores, 24GB of RAM](https://hitrov.medium.com/resolving-oracle-cloud-out-of-capacity-issue-and-getting-free-vps-with-4-arm-cores-24gb-of-a3d7e6a027a8)

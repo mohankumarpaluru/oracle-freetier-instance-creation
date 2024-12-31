@@ -31,9 +31,26 @@ fi
 
 # Function to send Discord message
 send_discord_message() {
-    if [ -n "$DISCORD_WEBHOOK" ]; then
-        curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$1\"}" $DISCORD_WEBHOOK
-    fi
+    curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$1\"}" $DISCORD_WEBHOOK
+}
+
+# Function to send Telegram message
+send_telegram_message() {
+    curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage" \
+         -d chat_id="$TELEGRAM_USER_ID" \
+         -d text="$1"
+}
+
+# General interface to send notifications
+send_notification() {
+  # check all channels
+  if [ -n "$DISCORD_WEBHOOK" ]; then
+      send_discord_message "$1"
+  fi
+
+  if [ -n "$TELEGRAM_TOKEN" ] && [ -n "$TELEGRAM_USER_ID" ]; then
+      send_telegram_message "$1"
+  fi
 }
 
 # Add this near the top of the script, after the send_discord_message function is defined
