@@ -2,3 +2,4 @@ oci
 paramiko
 python-dotenv
 requests
+cryptography

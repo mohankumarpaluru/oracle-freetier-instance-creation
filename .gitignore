@@ -159,3 +159,12 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 .vscode
+
+# Oracle Bot Credentials & Secrets
+oci.env
+oci_config
+oci_api_key.pem
+keys/
+*.log
+images_list.json
+INSTANCE_CREATED

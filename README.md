@@ -74,6 +74,27 @@ The script will display an error prompt if an issue arises; otherwise, it will s
 
 View the logs of the instance creation API call in `launch_instance.log` and details about the parameters used (availability-domain, compartment-id, subnet-id, image-id) in `setup_and_info.log`.
 
+## Running with Docker
+
+You can also run the bot using Docker, which is recommended to avoid dependency issues.
+
+1. Build the image:
+```bash
+docker build -t oracle-bot .
+```
+
+2. Run the container (mounting your config and wallet):
+```bash
+docker run -d \
+  -v $(pwd)/oci.env:/app/oci.env \
+  -v $(pwd)/oci_config:/root/.oci/config \
+  -v $(pwd)/oci_api_key.pem:/path/to/your/key.pem \
+  -v $(pwd)/logs:/app/logs \
+  --name oracle-bot \
+  oracle-bot
+```
+*Note: Ensure your `oci.env` and `oci_config` paths are correct.*
+
 ## Errors and Re-Run
 
 If the `oci_config` file is found to be incorrect, the script generates an `ERROR_IN_CONFIG.log` file. Verify the `oci_config` for accuracy, ensuring it aligns with the [sample_oci_config](https://github.com/mohankumarpaluru/oracle-freetier-instance-creation/blob/85b3ec065a91bb66206933a12a6bd58941446118/sample_oci_config#L1C1-L6C80) without any additional lines or characters.
