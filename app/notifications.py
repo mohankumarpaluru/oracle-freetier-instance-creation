@@ -64,7 +64,7 @@ class NotificationService:
 
     def notify_success(self, instance_details: str, html_body: str):
         """Notify success via all channels."""
-        success_msg = "🎉 Success! OCI Instance has been created. Time to celebrate!"
+        success_msg = f"🎉 Success! OCI Instance Created!\n\n{instance_details}"
         self.send_message(success_msg)
         self.send_email('OCI INSTANCE CREATED', html_body)
 

@@ -71,32 +71,34 @@ class OCIClient:
             raise Exception(f"Image not found for {config.OPERATING_SYSTEM} {config.OS_VERSION}")
 
     def launch_instance(self):
-        ad_name = self.get_availability_domain()
-        subnet_id = self.get_subnet_id()
-        image_id = self.get_image_id()
-        
-        logging.info(f"Launching instance in {ad_name}...")
-
-        # Configuration for Test / Micro instances (Commented out for production)
-        # shape_config = oci.core.models.LaunchInstanceShapeConfigDetails(
-        #     ocpus=1, memory_in_gbs=1
-        # )
-
-        # Production Configuration for VM.Standard.A1.Flex (Active)
-        if config.OCI_COMPUTE_SHAPE == "VM.Standard.A1.Flex":
-            shape_config = oci.core.models.LaunchInstanceShapeConfigDetails(
-                ocpus=4, memory_in_gbs=24
-            )
-        
-        # Read SSH Key
         try:
-            with open(config.SSH_AUTHORIZED_KEYS_FILE, 'r') as f:
-                ssh_key = f.read()
-        except FileNotFoundError:
-             # Basic handling if key file is missing, ideally should be generated before
-             raise Exception(f"SSH Key file not found at {config.SSH_AUTHORIZED_KEYS_FILE}")
+            ad_name = self.get_availability_domain()
+            subnet_id = self.get_subnet_id()
+            image_id = self.get_image_id()
+            
+            self.log.info(f"Launching instance in {ad_name}...")
+            # logging.info(f"Debug Params -> Subnet: {subnet_id} | Image: {image_id} | Shape: {config.OCI_COMPUTE_SHAPE}")
 
-        try:
+            # Configuration for Test / Micro instances (Commented out for production)
+            # shape_config = oci.core.models.LaunchInstanceShapeConfigDetails(
+            #     ocpus=1, memory_in_gbs=1
+            # )
+
+            # Production Configuration for VM.Standard.A1.Flex (Active)
+            shape_config = None
+            if config.OCI_COMPUTE_SHAPE == "VM.Standard.A1.Flex":
+                shape_config = oci.core.models.LaunchInstanceShapeConfigDetails(
+                    ocpus=4, memory_in_gbs=24
+                )
+            
+            # Read SSH Key
+            try:
+                with open(config.SSH_AUTHORIZED_KEYS_FILE, 'r') as f:
+                    ssh_key = f.read()
+            except FileNotFoundError:
+                 # Basic handling if key file is missing, ideally should be generated before
+                 raise Exception(f"SSH Key file not found at {config.SSH_AUTHORIZED_KEYS_FILE}")
+
             launch_details = oci.core.models.LaunchInstanceDetails(
                 availability_domain=ad_name,
                 compartment_id=self.tenancy_id,
@@ -125,9 +127,29 @@ class OCIClient:
             if response.status == 200:
                 self.log.info("Launch request accepted!")
                 instance = response.data
-                # Build HTML body manually or helper for notification
-                html_body = f"Instance {instance.id} created in {ad_name}"
-                notifications.notify_success(f"Instance {instance.id} Launched", html_body)
+                
+                try:
+                    with open('email_content.html', 'r', encoding='utf-8') as f:
+                        html_template = f.read()
+                        
+                    html_body = html_template.replace('<INSTANCE_ID>', instance.id)\
+                                             .replace('<DISPLAY_NAME>', instance.display_name)\
+                                             .replace('<AD>', instance.availability_domain)\
+                                             .replace('<SHAPE>', instance.shape)\
+                                             .replace('<STATE>', instance.lifecycle_state)
+                except Exception as e:
+                    self.log.warning(f"Failed to load email template: {e}. Falling back to simple text.")
+                    html_body = f"Instance {instance.id} created in {ad_name}"
+
+                text_msg = (
+                    f"Instance Details:\n"
+                    f"Name: {instance.display_name}\n"
+                    f"Shape: {instance.shape}\n"
+                    f"AD: {instance.availability_domain}\n"
+                    f"State: {instance.lifecycle_state}\n\n"
+                    f"Check your email for more info!"
+                )
+                notifications.notify_success(text_msg, html_body)
                 return True
                 
         except oci.exceptions.ServiceError as e:
@@ -138,6 +160,9 @@ class OCIClient:
                 self.log.error(f"Fatal Error: {e}")
                 notifications.notify_failure(str(e))
                 raise
+        except (oci.exceptions.RequestException, oci.exceptions.ConnectTimeout) as e:
+            self.log.warning(f"Network Error: {e} - Retrying...")
+            return False
 
         return False
 
