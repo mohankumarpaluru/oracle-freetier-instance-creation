@@ -66,6 +66,7 @@ source oci.env
 
 # Function to clean up and send notification
 cleanup() {
+    NORMAL_EXIT=1  # Suppress the generic EXIT-trap notification; we already sent one above.
     send_notification "🛑 Heads up! The OCI Instance Creation Script has been interrupted or stopped."
     kill $SCRIPT_PID
     exit 0
