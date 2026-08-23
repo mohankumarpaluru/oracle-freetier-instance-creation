@@ -19,7 +19,7 @@ In short, this script is another way to bypass the "Out of host capacity" or "Ou
 
 ## Features
 - Single file needs to be run after basic setup
-- Configurable wait time, OCPU, RAM, DISPLAY_NAME
+- Configurable wait time and DISPLAY_NAME
 - Gmail notification
 - SSH keys for ARM instances can be automatically created
 - OS configuration based on Image ID or OS and version
@@ -131,17 +131,17 @@ flowchart TD
 **Required Fields:**
 
 - `OCI_CONFIG`:  Absolute path to the file with OCI API Config Detail content
-- `OCT_FREE_AD`: Availability Domain that's eligible for *Always-Free Tier*. If multiple, separate by commas
+- `OCT_FREE_AD`: Availability Domain that's eligible for *Always-Free Tier*. If multiple, separate by commas. The script rotates through them on each retry attempt — it does **not** try them in parallel.
 
 **Optional Fields:**
 - `DISPLAY_NAME`: Name of the Instance
 - `REQUEST_WAIT_TIME_SECS`: Wait before trying to launch an instance again.
 - `SSH_AUTHORIZED_KEYS_FILE`: Give the absolute path of an SSH public key for ARM instance. **The program will create a public and private key pair with the name specified if the key file doesn't exist; otherwise, it uses the one specified**.
-- `OCI_SUBNET_ID`: The `OCID` of an existing subnet that will be used when creating an ARM instance. Only use it for running script from local. DO NOT ADD THIS IF YOU ARE ALREADY RUNNING IN A MICRO INSTANCE.
-    >  This can be found in `Networking` >`Virtual cloud networks` > `<VPC-Name>` > `Subnet Details`.
-- `OCI_IMAGE_ID`: *Image_id* of the desired OS and version; the script will generate the `image_list.json`.
+- `OCI_SUBNET_ID`: The `OCID` of an existing subnet. **Required when running the script locally** (not on an OCI Micro instance). Leave empty when running on a Micro instance — the script auto-detects the subnet. If left empty while running locally the script may pick an unexpected subnet.
+    >  This can be found in `Networking` > `Virtual cloud networks` > `<VPC-Name>` > `Subnet Details`.
+- `OCI_IMAGE_ID`: Specific image OCID to use. If left empty, the script uses `OPERATING_SYSTEM` + `OS_VERSION` to find the newest matching image and writes all available options to `images_list.json` on the first run — check that file to find valid image OCIDs.
 - `OCI_COMPUTE_SHAPE`: Free-tier compute shape of the instance to launch. Defaults to ARM, but configurable if you are running into capacity issues for the free AMD instance in your home region. Acceptable values `VM.Standard.A1.Flex` and `VM.Standard.E2.1.Micro`.
-- `SECOND_MICRO_INSTANCE`: `True` if you are utilizing the script for your second free tier Micro Instance, else `False`.
+- `SECOND_MICRO_INSTANCE`: Set to `True` only if you are trying to create your **second** Always-Free Micro instance. If you are running the script to create your first Micro instance (or any ARM instance), keep this `False`.
 - `OPERATING_SYSTEM`: Exact name of the operating system
 - `OS_VERSION`: Exact version of the operating system
 - `ASSIGN_PUBLIC_IP`: Automatically assign an ephemeral public IP address
@@ -196,6 +196,26 @@ Add the following lines to your `oci.env` file to enable Telegram notifications:
 TELEGRAM_TOKEN=your_telegram_bot_token_here
 TELEGRAM_USER_ID=your_telegram_user_id_here
 ```
+
+## FAQ
+
+**Is the script actually working? The log shows "Out of host capacity" errors.**
+
+Yes — this is completely normal. `Out of host capacity` (or `InternalError: Out of host capacity`) means Oracle doesn't have free capacity right now. The script will keep retrying every `REQUEST_WAIT_TIME_SECS` seconds until capacity opens up. As long as you see these lines in `launch_instance.log`, the script is running correctly.
+
+**How do I stop the script?**
+
+If you launched it with `setup_init.sh`, send SIGINT to the shell session (Ctrl+C) or kill the PID shown after startup. If you used `screen`, re-attach with `screen -r` then Ctrl+C. The background Python process PID is stored in `$SCRIPT_PID` while `setup_init.sh` is running.
+
+**How do I change how often it retries?**
+
+Set `REQUEST_WAIT_TIME_SECS` in `oci.env`. The default is 60 seconds. Setting it too low (e.g., < 30s) risks rate-limiting from OCI (`TooManyRequests` error).
+
+**I see a `LimitExceeded` error — does that mean I already have an instance?**
+
+Not necessarily. It means you have hit a service limit in your tenancy. Log into the [OCI Console](https://cloud.oracle.com) and check whether an ARM instance already exists. If it does, the script should detect it and exit. If not, the limit may relate to boot volume storage — check your tenancy limits.
+
+**For more error-specific help see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).**
 
 ## Credits and References
 - [xitroff](https://www.reddit.com/user/xitroff/): [Resolving Oracle Cloud Out of Capacity Issue and Getting Free VPS with 4 ARM Cores, 24GB of RAM](https://hitrov.medium.com/resolving-oracle-cloud-out-of-capacity-issue-and-getting-free-vps-with-4-arm-cores-24gb-of-a3d7e6a027a8)
