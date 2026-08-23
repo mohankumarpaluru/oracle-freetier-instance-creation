@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import smtplib
-import sys
 import time
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -16,17 +15,52 @@ import paramiko
 from dotenv import load_dotenv
 import requests
 
-# Load environment variables from .env file
-load_dotenv('oci.env')
+# Load a private local env file when OCI_ENV_FILE is set. Keep the tracked
+# oci.env file as a non-secret example.
+ENV_FILE = os.getenv("OCI_ENV_FILE", "oci.env")
+load_dotenv(ENV_FILE)
 
 ARM_SHAPE = "VM.Standard.A1.Flex"
 E2_MICRO_SHAPE = "VM.Standard.E2.1.Micro"
+ARM_OCPUS = 2
+ARM_MEMORY_IN_GBS = 12
+MIN_BOOT_VOLUME_SIZE_IN_GBS = 50
+MAX_FREE_TIER_BOOT_VOLUME_SIZE_IN_GBS = 200
+
+
+def validate_retry_delay(value):
+    """Return a safe retry delay from REQUEST_WAIT_TIME_SECS."""
+    try:
+        retry_delay = int(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError("REQUEST_WAIT_TIME_SECS must be a positive integer.") from error
+
+    if retry_delay <= 0:
+        raise ValueError("REQUEST_WAIT_TIME_SECS must be a positive integer.")
+
+    return retry_delay
+
+
+def validate_boot_volume_size(value):
+    """Return a supported boot-volume size without assuming account-wide usage."""
+    try:
+        boot_volume_size = int(value)
+    except (TypeError, ValueError) as error:
+        raise ValueError("BOOT_VOLUME_SIZE must be an integer between 50 and 200 GB.") from error
+
+    if boot_volume_size > MAX_FREE_TIER_BOOT_VOLUME_SIZE_IN_GBS:
+        raise ValueError(
+            "BOOT_VOLUME_SIZE must not exceed 200 GB. Free Tier block-volume "
+            "capacity is shared with other volumes; choose a smaller size if needed."
+        )
+
+    return max(MIN_BOOT_VOLUME_SIZE_IN_GBS, boot_volume_size)
 
 # Access loaded environment variables and strip white spaces
 OCI_CONFIG = os.getenv("OCI_CONFIG", "").strip()
 OCT_FREE_AD = os.getenv("OCT_FREE_AD", "").strip()
 DISPLAY_NAME = os.getenv("DISPLAY_NAME", "").strip()
-WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS", "0").strip())
+WAIT_TIME = validate_retry_delay(os.getenv("REQUEST_WAIT_TIME_SECS", "60").strip())
 SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE", "").strip()
 OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID", None).strip() if os.getenv("OCI_IMAGE_ID") else None
 OCI_COMPUTE_SHAPE = os.getenv("OCI_COMPUTE_SHAPE", ARM_SHAPE).strip()
@@ -35,7 +69,7 @@ OCI_SUBNET_ID = os.getenv("OCI_SUBNET_ID", None).strip() if os.getenv("OCI_SUBNE
 OPERATING_SYSTEM = os.getenv("OPERATING_SYSTEM", "").strip()
 OS_VERSION = os.getenv("OS_VERSION", "").strip()
 ASSIGN_PUBLIC_IP = os.getenv("ASSIGN_PUBLIC_IP", "false").strip()
-BOOT_VOLUME_SIZE = os.getenv("BOOT_VOLUME_SIZE", "50").strip()
+BOOT_VOLUME_SIZE = validate_boot_volume_size(os.getenv("BOOT_VOLUME_SIZE", "50").strip())
 NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL", 'False').strip().lower() == 'true'
 EMAIL = os.getenv("EMAIL", "").strip()
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "").strip()
@@ -230,38 +264,52 @@ def notify_on_failure(failure_msg):
         send_email('OCI INSTANCE CREATION SCRIPT: FAILED DUE TO AN ERROR', mail_body, EMAIL, EMAIL_PASSWORD)
 
 
-def check_instance_state_and_write(compartment_id, shape, states=('RUNNING', 'PROVISIONING'),
-                                   tries=3):
+def is_requested_arm_instance(instance):
+    """Return whether an instance matches the requested A1 configuration."""
+    if (instance.shape != ARM_SHAPE or instance.display_name != DISPLAY_NAME or
+            instance.lifecycle_state != "RUNNING"):
+        return False
+
+    shape_config = getattr(instance, "shape_config", None)
+    return shape_config is not None and (
+        getattr(shape_config, "ocpus", None) == ARM_OCPUS and
+        getattr(shape_config, "memory_in_gbs", None) == ARM_MEMORY_IN_GBS
+    )
+
+
+def check_instance_state_and_write(compartment_id, shape, states=("RUNNING",), tries=3):
     """Check the state of instances in the specified compartment and take action when a matching instance is found.
 
     Args:
         compartment_id (str): The compartment ID to check for instances.
         shape (str): The shape of the instance.
-        states (tuple, optional): The lifecycle states to consider. Defaults to ('RUNNING', 'PROVISIONING').
+        states (tuple, optional): Retained for compatibility; only RUNNING is accepted.
         tries(int, optional): No of reties until an instance is found. Defaults to 3.
 
     Returns:
         bool: True if a matching instance is found, False otherwise.
     """
-    for _ in range(tries):
+    for attempt in range(tries):
         instance_list = list_all_instances(compartment_id=compartment_id)
-        if shape == ARM_SHAPE:
-            running_arm_instance = next((instance for instance in instance_list if
-                                         instance.shape == shape and instance.lifecycle_state in states), None)
+        if shape == ARM_SHAPE and "RUNNING" in states:
+            running_arm_instance = next((instance for instance in instance_list
+                                         if is_requested_arm_instance(instance)), None)
             if running_arm_instance:
                 create_instance_details_file_and_notify(running_arm_instance, shape)
                 return True
         else:
             micro_instance_list = [instance for instance in instance_list if
-                                   instance.shape == shape and instance.lifecycle_state in states]
+                                   instance.shape == shape and
+                                   instance.lifecycle_state == "RUNNING" and
+                                   "RUNNING" in states]
             if len(micro_instance_list) > 1 and SECOND_MICRO_INSTANCE:
                 create_instance_details_file_and_notify(micro_instance_list[-1], shape)
                 return True
             if len(micro_instance_list) == 1 and not SECOND_MICRO_INSTANCE:
                 create_instance_details_file_and_notify(micro_instance_list[-1], shape)
                 return True       
-        if tries - 1 > 0:
-            time.sleep(60)
+        if attempt < tries - 1:
+            time.sleep(WAIT_TIME)
 
     return False
 
@@ -436,16 +484,21 @@ def launch_instance():
         shortened_images = [{key: json.loads(str(image))[key] for key in IMAGE_LIST_KEYS
                              } for image in images]
         write_into_file('images_list.json', json.dumps(shortened_images, indent=2))
-        oci_image_id = next(image.id for image in images if
-                            image.operating_system == OPERATING_SYSTEM and
-                            image.operating_system_version == OS_VERSION)
+        matching_images = [image for image in images if
+                           image.operating_system == OPERATING_SYSTEM and
+                           image.operating_system_version == OS_VERSION]
+        if not matching_images:
+            raise ValueError(
+                f"No compatible image found for {OPERATING_SYSTEM} {OS_VERSION}"
+            )
+        oci_image_id = max(matching_images, key=lambda image: image.time_created).id
         logging.info("OCI_IMAGE_ID: %s", oci_image_id)
     else:
         oci_image_id = OCI_IMAGE_ID
 
     assign_public_ip = ASSIGN_PUBLIC_IP.lower() in [ "true", "1", "y", "yes" ]
 
-    boot_volume_size = max(50, int(BOOT_VOLUME_SIZE))
+    boot_volume_size = BOOT_VOLUME_SIZE
 
     ssh_public_key = read_or_generate_ssh_public_key(SSH_AUTHORIZED_KEYS_FILE)
 
@@ -453,7 +506,9 @@ def launch_instance():
     instance_exist_flag = check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE, tries=1)
 
     if OCI_COMPUTE_SHAPE == "VM.Standard.A1.Flex":
-        shape_config = oci.core.models.LaunchInstanceShapeConfigDetails(ocpus=2, memory_in_gbs=12)
+        shape_config = oci.core.models.LaunchInstanceShapeConfigDetails(
+            ocpus=ARM_OCPUS, memory_in_gbs=ARM_MEMORY_IN_GBS
+        )
     else:
         shape_config = oci.core.models.LaunchInstanceShapeConfigDetails(ocpus=1, memory_in_gbs=1)
 
@@ -475,7 +530,7 @@ def launch_instance():
                         recovery_action="RESTORE_INSTANCE"
                     ),
                     instance_options=oci.core.models.InstanceOptions(
-                        are_legacy_imds_endpoints_disabled=False
+                        are_legacy_imds_endpoints_disabled=True
                     ),
                     shape_config=shape_config,
                     source_details=oci.core.models.InstanceSourceViaImageDetails(
@@ -494,14 +549,17 @@ def launch_instance():
                 instance_exist_flag = check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE)
 
         except oci.exceptions.ServiceError as srv_err:
-            if srv_err.code == "LimitExceeded":                
-                logging_step5.info("Encoundered LimitExceeded Error checking if instance is created" \
-                                   "code :%s, message: %s, status: %s", srv_err.code, srv_err.message, srv_err.status)                
+            if srv_err.code == "LimitExceeded":
+                logging_step5.info("Encountered LimitExceeded while checking whether instance was created "
+                                   "code: %s, message: %s, status: %s",
+                                   srv_err.code, srv_err.message, srv_err.status)
                 instance_exist_flag = check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE)
                 if instance_exist_flag:
-                    logging_step5.info("%s , exiting the program", srv_err.code)
-                    sys.exit()
-                logging_step5.info("Didn't find an instance , proceeding with retries")     
+                    logging_step5.info("%s: matching running instance confirmed", srv_err.code)
+                    return
+                logging_step5.info("No matching running instance found; retrying in %s seconds", WAIT_TIME)
+                time.sleep(WAIT_TIME)
+                continue
             data = {
                 "status": srv_err.status,
                 "code": srv_err.code,
