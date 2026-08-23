@@ -18,9 +18,12 @@ is_debian_or_ubuntu() {
 # Check if the argument is 'rerun'
 if [ "$1" != "rerun" ]; then
     if is_debian_or_ubuntu && command -v apt >/dev/null 2>&1; then
-        # Update package lists and install required packages without confirmation
-        sudo apt update -y
-        sudo apt install python3-venv -y
+        # Skip if python3-venv is already available to avoid a sudo hang for
+        # users who are not in the sudoers file (fixes #67).
+        if ! python3 -m venv --help >/dev/null 2>&1; then
+            sudo apt update -y
+            sudo apt install python3-venv -y
+        fi
     fi
     python3 -m venv .venv
 fi
