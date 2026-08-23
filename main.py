@@ -62,6 +62,25 @@ try:
     if config_has_spaces:
         raise ValueError("oci_config has spaces in values which is not acceptable")        
 
+except configparser.NoSectionError:
+    msg = (
+        "oci_config is missing the [DEFAULT] section. "
+        "Ensure your config file matches the format shown in sample_oci_config."
+    )
+    with open("ERROR_IN_CONFIG.log", "w", encoding='utf-8') as file:
+        file.write(msg)
+    print(msg)
+
+except configparser.NoOptionError:
+    msg = (
+        "oci_config is missing the 'user' key under [DEFAULT]. "
+        "Copy the OCID from your OCI profile and add: user=ocid1.user.oc1..<your-ocid>. "
+        "Refer to sample_oci_config for the expected format."
+    )
+    with open("ERROR_IN_CONFIG.log", "w", encoding='utf-8') as file:
+        file.write(msg)
+    print(msg)
+
 except configparser.Error as e:
     with open("ERROR_IN_CONFIG.log", "w", encoding='utf-8') as file:
         file.write(str(e))
