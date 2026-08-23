@@ -149,7 +149,7 @@ flowchart TD
 - `NOTIFY_EMAIL`: Make it True if you want to get notified and provide email and password
 - `EMAIL`: Only Gmail is allowed, the same email will be used for *FROM* and *TO*
 - `EMAIL_PASSWORD`: If two-factor authentication is set, create an App Password and specify it, not the email password. Direct password will work if no two-factor authentication is configured for the email.
-- `DISCORD_WEBHOOK_URL`: URL of the Discord webhook for notifications (optional)
+- `DISCORD_WEBHOOK`: URL of the Discord webhook for notifications (optional)
 
 ## Discord Webhook Notifications
 
@@ -161,7 +161,7 @@ To receive notifications via Discord when an instance is created or when errors 
 4. Add the following line to your `oci.env` file:
 
 ```
-DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
+DISCORD_WEBHOOK=your_discord_webhook_url_here
 ```
 
 Replace `your_discord_webhook_url_here` with the actual webhook URL you copied.
