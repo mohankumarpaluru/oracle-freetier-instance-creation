@@ -80,11 +80,20 @@ Also confirm you have assigned a public IP to the instance in the OCI console (C
 
 ## Account suspension / service limits zeroed out
 
-Oracle may review accounts that make a very high volume of API calls. If you are concerned:
+A small number of users have reported that their Oracle Free Tier service limits were reduced to zero after running automation scripts like this one for extended periods. I have not personally experienced this, and it has not been a widespread pattern in the community — but it is worth being aware of.
 
-- Set `REQUEST_WAIT_TIME_SECS` to **60 or higher** (default is 60).
-- Avoid restarting the script excessively — each restart triggers an immediate API call.
-- The script is designed for legitimate provisioning automation as supported by the OCI API. That said, account reviews are at Oracle's sole discretion.
+**What likely happens:** Oracle's backend monitoring may flag tenancies that generate unusually high API call volumes over time. The OCI API Terms of Service permit programmatic access, including instance provisioning, but Oracle retains the right to take action on accounts that are flagged.
+
+**What this script does by default:**
+- Makes one API call every `REQUEST_WAIT_TIME_SECS` seconds (default: 60 seconds).
+- At the default rate that is ~1,440 API calls per day — broadly comparable to other provisioning tools.
+
+**Recommendations for responsible use:**
+- Keep `REQUEST_WAIT_TIME_SECS` at **60 or above**. There is no meaningful benefit to going lower, and it increases API call volume.
+- Avoid restarting the script repeatedly in quick succession — each startup triggers an immediate launch attempt before the timer kicks in.
+- Once your instance is successfully created, stop the script. It exits automatically on success, but check `INSTANCE_CREATED` to confirm.
+
+If your limits have already been reduced, contact [Oracle Cloud Support](https://support.oracle.com) directly — this is an account policy matter that can only be resolved with Oracle.
 
 ---
 
